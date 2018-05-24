@@ -17,7 +17,7 @@ class SourceSeparation_DataSet(object):
     
     def load(self):
         def get_speakers():
-            # Dynamic Random Sampling
+            # <TODO> Dynamic Random Sampling
             return
         
         def get_dr1_speakers():

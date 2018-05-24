@@ -10,12 +10,14 @@ from DataSets import SourceSeparation_DataSet
 def parse_arguments():
     parser = ArgumentParser()
     
-    parser.add_argument("n_epochs", type=int, 
-                        help="Number of epochs")
     parser.add_argument("learning_rate", type=float, 
                         help="Learning rate")
     parser.add_argument("batch_sz", type=int, 
-                        help="Batch size")
+                        help="Batch size (multiples of number of noise signals)")
+    parser.add_argument("bptt", type=int,
+                        help="Back Propagation Through Time timestep")
+    parser.add_argument("n_epochs", type=int, 
+                        help="Number of epochs")
     parser.add_argument("gpu_id", type=int,
                         help="GPU ID")
     
@@ -27,8 +29,7 @@ def parse_arguments():
                         help="Number of bits used for quantization (Default: 4)")
     parser.add_argument("-s", "--state_sz", type=int, default=1024,
                         help="Number of hidden units in each layer (Default: 1024)")
-    parser.add_argument("-t", "--bptt", type=int, default=30,
-                        help="Back Propagation Through Time timestep (Default: 30)")
+
     parser.add_argument("-p", "--perc", type=float, default=0.1,
                         help="Proportion of data to sample for quantization (Default: 0.1)")
     parser.add_argument("-m", "--dir_models", type=str, default='Saved_Models',
@@ -57,7 +58,7 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"]=str(args.gpu_id)
     
     t_stamp = '{0:%m.%d(%H:%M)}'.format(datetime.now())
-    save_name = '{}/{}_lr:{}'.format(args.dir_models, t_stamp, args.learning_rate)
+    save_name = '{}/{}_GPU:{}_lr:{}'.format(args.dir_models, t_stamp, args.gpu_id, args.learning_rate)
     
     model = GRU_Net(args.perc,                 
                     args.bptt,
@@ -72,7 +73,8 @@ def main():
                     save_name)                        
     model.train(data)
     
-    save_name = '{}/{}_lr:{}_SNR:{:.1f}'.format(args.dir_results, t_stamp, args.learning_rate, model.va_snrs.max())
+    save_name = '{}/{}_GPU:{}_lr:{}_SNR:{:.1f}'.format(args.dir_results, t_stamp, args.gpu_id, 
+                                                       args.learning_rate, model.va_snrs.max())
     plot_results(model, save_name)
 
 if __name__ == "__main__":
