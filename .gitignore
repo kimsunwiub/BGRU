@@ -20,6 +20,4 @@ dist
 *.pyo
 *.tmp*
 
-*.data*
-*.index
-*.meta
+Saved_*/*

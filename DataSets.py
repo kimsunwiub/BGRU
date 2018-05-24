@@ -24,7 +24,7 @@ class SourceSeparation_DataSet(object):
             path_train = 'Data/train/dr1' 
             path_test = 'Data/test/dr1' 
             
-            speakers_train = ['fcjf0']#, 'mcpm0'] 
+            speakers_train = ['fcjf0', 'mcpm0'] 
             speakers_test = ['faks0']
             if self.size != 'small':
                 speakers_train += ['fdaw0', 'mdac0']
