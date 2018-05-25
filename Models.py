@@ -101,7 +101,7 @@ class GRU_Net(object):
             Helper function to train(): Training
             """
             # Initialize result arrays
-            n_iter = int(len(data_tr['M'])/self.batch_sz)
+            n_iter = len(data_tr['M'])//self.batch_sz
             signal_losses = empty_array(n_iter)
 
             # Iterate for n_iter (N/b) times
@@ -119,7 +119,7 @@ class GRU_Net(object):
                     local_bptt = self.bptt
                 assert (local_bptt <= X_bin[0].shape[0])
                 
-                feed_sz = int(X_bin[0].shape[0]/local_bptt)
+                feed_sz = X_bin[0].shape[0]//local_bptt
                 feed_losses = empty_array(feed_sz)
                 
                 for j in range(feed_sz):
@@ -144,7 +144,7 @@ class GRU_Net(object):
             Helper function to train(): Validation
             """
             # Initialize result arrays
-            n_iter = int(len(data_va['M'])/self.batch_sz)
+            n_iter = len(data_va['M'])//self.batch_sz
             signal_losses, signal_snrs = empty_array((2,n_iter))
             
             # Iterate for n_iter (N/b) times
@@ -170,7 +170,7 @@ class GRU_Net(object):
                 S_hat = S_hat.transpose(0,2,1)
                 S_hat_i = np.array([istft(s) for s in S_hat])
                 
-                S_idx = int(i/data.noise*self.batch_sz)
+                S_idx = i//data.noise*self.batch_sz
                 S = data_va['S'][S_idx]
                 S = S.T
                 S_i = np.repeat(istft(S)[None, :], self.batch_sz, axis=0)
