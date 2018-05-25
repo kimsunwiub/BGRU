@@ -113,10 +113,8 @@ class GRU_Net(object):
                 y = np.array(data_tr['y'][start_idx:end_idx], dtype=np.float32)
                 
                 # Run model w.r.t. lookback length
-                if self.bptt == -1:
-                    local_bptt = X_bin[0].shape[0]
-                else:
-                    local_bptt = self.bptt
+                if self.bptt == -1: local_bptt = X_bin[0].shape[0]
+                else: local_bptt = self.bptt
                 assert (local_bptt <= X_bin[0].shape[0])
                 
                 feed_sz = X_bin[0].shape[0]//local_bptt
@@ -170,7 +168,7 @@ class GRU_Net(object):
                 S_hat = S_hat.transpose(0,2,1)
                 S_hat_i = np.array([istft(s) for s in S_hat])
                 
-                S_idx = i//data.noise*self.batch_sz
+                S_idx = i*self.batch_sz//data.noise
                 S = data_va['S'][S_idx]
                 S = S.T
                 S_i = np.repeat(istft(S)[None, :], self.batch_sz, axis=0)
