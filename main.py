@@ -29,13 +29,16 @@ def parse_arguments():
                         help="Number of bits used for quantization (Default: 4)")
     parser.add_argument("-s", "--state_sz", type=int, default=1024,
                         help="Number of hidden units in each layer (Default: 1024)")
-
     parser.add_argument("-p", "--perc", type=float, default=0.1,
                         help="Proportion of data to sample for quantization (Default: 0.1)")
     parser.add_argument("-m", "--dir_models", type=str, default='Saved_Models',
                         help="Path to save Tensorflow model je m'appelle mercy (Default: 'Saved_Models')")
     parser.add_argument("-r", "--dir_results", type=str, default='Saved_Results',
                         help="Path to save GRU_Net model and plots from experiments (Default: 'Saved_Results')")
+    parser.add_argument("-d", "--data_sz", type=str, default='small',
+                        help="Size of data set (Default: small(2)). [Options: small(2), medium(4), large(8), xlarge(12)]")
+    parser.add_argument("-n", "--n_noise", type=str, default='few',
+                        help="Number of noise signals (Default: few(5)) [Options: few(5), many(10)]")
     
     parser.add_argument("-v", "--verbose",  action='store_true', default=False,
         help = "Print SNR outputs from each epoch (Default: False)")
@@ -53,9 +56,10 @@ def plot_results(model, fn):
 
 def main():
     args = parse_arguments()
-    data = SourceSeparation_DataSet()
+    data = SourceSeparation_DataSet(args.data_sz, args.n_noise)
     os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"]=str(args.gpu_id)
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
     
     t_stamp = '{0:%m.%d(%H:%M)}'.format(datetime.now())
     save_name = '{}/{}_GPU:{}_lr:{}'.format(args.dir_models, t_stamp, args.gpu_id, args.learning_rate)
