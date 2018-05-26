@@ -4,6 +4,8 @@ from tqdm import tqdm
 import numpy as np
 import os
 
+eps = 1e-7
+
 class SourceSeparation_DataSet(object):
     def __init__(self, data_sz, n_noise):
         self.train = {}
@@ -61,7 +63,7 @@ class SourceSeparation_DataSet(object):
                 return (sig - sig.mean()) / sig.std()
             
             def create_ideal_binary_mask(S, N):
-                M = S / (S + N)
+                M = S / (S + N + eps)
                 M[np.where(M <= 0.5)] = 0
                 M[np.where(M > 0.5)] = 1
                 return M.real

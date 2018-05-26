@@ -19,5 +19,6 @@ dist
 *.pyc
 *.pyo
 *.tmp*
+.sh
 
 Saved_*/*
