@@ -5,11 +5,11 @@ import numpy as np
 import os
 
 class SourceSeparation_DataSet(object):
-    def __init__(self, size='small', noise='few'):
+    def __init__(self, data_sz, n_noise):
         self.train = {}
         self.test = {}
-        self.size = size
-        self.noise = noise
+        self.data_sz = data_sz
+        self.n_noise = n_noise
         self.sr = 16000
         self.Lloyd_Max = Lloyd_Max()
         self.load()
@@ -26,16 +26,16 @@ class SourceSeparation_DataSet(object):
             
             speakers_train = ['fcjf0', 'mcpm0'] 
             speakers_test = ['faks0']
-            if self.size != 'small':
+            if self.data_sz != 'small':
                 speakers_train += ['fdaw0', 'mdac0']
                 speakers_test += ['mdab0']
-                if self.size != 'medium':
+                if self.data_sz != 'medium':
                     speakers_train += ['fdml0', 'fecd0', 'mdpk0', 'medr0']
                     speakers_test += ['fdac1']
-                    if self.size != 'large':
+                    if self.data_sz != 'large':
                         speakers_train += ['fetb0', 'fjsp0', 'mgrl0', 'mjeb1']
                         speakers_test += ['felc0']
-                        assert self.size == 'xlarge'
+                        assert self.data_sz == 'xlarge'
             
             fullpath_train = ['%s/%s' % (path_train, s) for s in speakers_train]
             fullpath_test = ['%s/%s' % (path_test, s) for s in speakers_test]
@@ -45,10 +45,10 @@ class SourceSeparation_DataSet(object):
         def get_noises():
             path_noise = 'Data/Duan'
             names = ['birds', 'casino', 'cicadas', 'computerkeyboard', 'eatingchips']     
-            if self.noise != 'few':
+            if self.n_noise != 'few':
                 names += ['frogs', 'jungle', 'machineguns', 'motorcycles', 'ocean']
-                assert self.noise == 'many'
-            self.noise = len(names)
+                assert self.n_noise == 'many'
+            self.n_noise = len(names)
             return ['%s/%s.wav' % (path_noise, s) for s in names]
 
         def get_signals_from_speakers(speakers):    
