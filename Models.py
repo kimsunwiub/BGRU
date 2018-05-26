@@ -168,7 +168,7 @@ class GRU_Net(object):
                 S_hat = S_hat.transpose(0,2,1)
                 S_hat_i = np.array([istft(s) for s in S_hat])
                 
-                S_idx = i*self.batch_sz//data.noise
+                S_idx = i*self.batch_sz//data.n_noise
                 S = data_va['S'][S_idx]
                 S = S.T
                 S_i = np.repeat(istft(S)[None, :], self.batch_sz, axis=0)
