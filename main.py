@@ -62,7 +62,8 @@ def main():
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
     
     t_stamp = '{0:%m.%d(%H:%M)}'.format(datetime.now())
-    save_name = '{}/{}_GPU:{}_lr:{}'.format(args.dir_models, t_stamp, args.gpu_id, args.learning_rate)
+    save_name = '{}/{}_lr({})_batchsz({})_bptt({})_data({})_noise({})'.format(
+        args.dir_results, t_stamp, args.learning_rate, args.batch_sz, args.bptt, args.data_sz, args.n_noise)
     
     model = GRU_Net(args.perc,                 
                     args.bptt,
@@ -77,8 +78,7 @@ def main():
                     save_name)                        
     model.train(data)
     
-    save_name = '{}/{}_GPU:{}_lr:{}_SNR:{:.1f}'.format(args.dir_results, t_stamp, args.gpu_id, 
-                                                       args.learning_rate, model.va_snrs.max())
+    save_name += '_SNR({:.1f})'.format(model.va_snrs.max())
     plot_results(model, save_name)
 
 if __name__ == "__main__":
