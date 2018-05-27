@@ -62,9 +62,11 @@ def main():
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
     
     t_stamp = '{0:%m.%d(%H:%M)}'.format(datetime.now())
-    save_name = '{}/{}_lr({})_batchsz({})_bptt({})_data({})_noise({})'.format(
-        args.dir_results, t_stamp, args.learning_rate, args.batch_sz, args.bptt, args.data_sz, args.n_noise)
     
+    os.environ["CUDA_VISIBLE_DEVICES"]=str(args.gpu_id)
+    run_info = '{}_lr({})_batchsz({})_bptt({})_data({})_noise({})'.format(
+        t_stamp, args.learning_rate, args.batch_sz, args.bptt, args.data_sz, args.n_noise)
+    save_model_name = '{}/{}'.format(args.dir_models, run_info)
     model = GRU_Net(args.perc,                 
                     args.bptt,
                     args.n_epochs, 
@@ -75,11 +77,10 @@ def main():
                     args.n_layers,
                     args.state_sz,
                     args.verbose,
-                    save_name)                        
+                    save_model_name)
     model.train(data)
-    
-    save_name += '_SNR({:.1f})'.format(model.va_snrs.max())
-    plot_results(model, save_name)
+    save_result_name = '{}/{}_SNR({:.1f})'.format(args.dir_results, run_info, model.va_snrs.max())
+    plot_results(model, save_result_name)
 
 if __name__ == "__main__":
     main()
