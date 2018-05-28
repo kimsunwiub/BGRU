@@ -4,14 +4,15 @@ from tqdm import tqdm
 import numpy as np
 import os
 
-eps = 1e-7
+EPS = 1e-7
 
 class SourceSeparation_DataSet(object):
-    def __init__(self, data_sz, n_noise):
+    def __init__(self, data_sz, n_noise, dir_data):
         self.train = {}
         self.test = {}
         self.data_sz = data_sz
         self.n_noise = n_noise
+        self.dir_data = dir_data
         self.sr = 16000
         self.Lloyd_Max = Lloyd_Max()
         self.load()
@@ -19,7 +20,8 @@ class SourceSeparation_DataSet(object):
     
     def load(self):
         def get_speakers():
-            # <TODO> Dynamic Random Sampling
+            # <TODO> Random Sampling
+            # <TODO> Directory Input
             return
         
         def get_dr1_speakers():
@@ -63,7 +65,7 @@ class SourceSeparation_DataSet(object):
                 return (sig - sig.mean()) / sig.std()
             
             def create_ideal_binary_mask(S, N):
-                M = S / (S + N + eps)
+                M = S / (S + N + EPS)
                 M[np.where(M <= 0.5)] = 0
                 M[np.where(M > 0.5)] = 1
                 return M.real
