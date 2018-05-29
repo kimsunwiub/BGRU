@@ -4,6 +4,7 @@ from datetime import datetime
 import _pickle as pickle
 import logging
 import os 
+import re
 
 from Models import GRU_Net
 from DataSets import SourceSeparation_DataSet
@@ -51,11 +52,23 @@ def parse_arguments():
 
     return parser.parse_args()
 
-def mod_name(old_name, curr_n_epochs):
-    prev_n_epoch = int(old_name.split('_')[-1])
-    name_format = '_'.join(old_name.split('_')[:-1])
-    new_name = '{}_{}'.format(name_format, curr_n_epochs + prev_n_epoch)
-    return new_name
+def mod_name(prev_name, n_epochs, snr=None):
+    curr_split = []    
+    is_first = True
+    for sp in prev_name.split('_'):
+        if 'epoch' in sp:
+            is_first = False
+            prev_n_epochs = int(re.split(r'[()]', sp)[1])
+            sp = 'epoch({})'.format(prev_n_epochs + n_epochs)
+        elif snr and 'SNR' in sp:
+            is_first = False
+            sp = 'SNR({:.4f})'.format(snr)
+        curr_split.append(sp)
+    if is_first:
+        curr_split.append('epoch({})'.format(n_epochs))
+        if snr:
+            curr_split.append('SNR({:.4f})'.format(snr))
+    return '_'.join(curr_split)
 
 def plot_results(model, fn):
     plt.switch_backend('agg')
@@ -88,10 +101,9 @@ def main():
         run_info = mod_name(args.model_nm, args.n_epochs)
         args.model_nm = '{}/{}'.format(args.dir_models, args.model_nm)
     else:
-        run_info = '{}_lr({})_batchsz({})_bptt({})_data({})_noise({})_{}'.format(
-            t_stamp, args.learning_rate, args.batch_sz, args.bptt, data.data_sz, data.n_noise, args.n_epochs)
+        run_info = '{}_lr({})_batchsz({})_bptt({})_data({})_noise({})'.format(
+            t_stamp, args.learning_rate, args.batch_sz, args.bptt, data.data_sz, data.n_noise)
         args.model_nm = '{}/{}'.format(args.dir_models, run_info)
-        
     model = GRU_Net(args.perc,                 
                     args.bptt,
                     args.n_epochs, 
@@ -106,7 +118,9 @@ def main():
                     args.model_nm)
     model.train(data)
 
-    plot_name = '{}/{}_SNR({:.1f})'.format(args.dir_results, run_info, model.va_snrs.max())
+    if is_restore:
+        args.n_epochs = 0
+    plot_name = '{}/{}'.format(args.dir_results, mod_name(run_info, args.n_epochs, model.va_snrs.max()))
     plot_results(model, plot_name)
     
 if __name__ == "__main__":

@@ -4,12 +4,25 @@ import _pickle as pickle
 import tensorflow as tf
 from tqdm import tqdm
 import numpy as np
+import re
 
-def mod_name(old_name, curr_n_epochs):
-    prev_n_epoch = int(old_name.split('_')[-1])
-    name_format = '_'.join(old_name.split('_')[:-1])
-    new_name = '{}_{}'.format(name_format, curr_n_epochs + prev_n_epoch)
-    return new_name
+def mod_name(prev_name, n_epochs, snr=None):
+    curr_split = []    
+    is_first = True
+    for sp in prev_name.split('_'):
+        if 'epoch' in sp:
+            is_first = False
+            prev_n_epochs = int(re.split(r'[()]', sp)[1])
+            sp = 'epoch({})'.format(prev_n_epochs + n_epochs)
+        elif snr and 'SNR' in sp:
+            is_first = False
+            sp = 'SNR({:.4f})'.format(snr)
+        curr_split.append(sp)
+    if is_first:
+        curr_split.append('epoch({})'.format(n_epochs))
+        if snr:
+            curr_split.append('SNR({:.4f})'.format(snr))
+    return '_'.join(curr_split)
 
 def empty_array(size):
     """
@@ -201,7 +214,6 @@ class GRU_Net(object):
             saver = tf.train.Saver(saver_dict(tf.trainable_variables()))  
             if self.is_restore:
                 saver.restore(sess, '{}'.format(self.model_nm))
-                self.model_nm = mod_name(self.model_nm, self.n_epochs)
             
             self.tr_losses, self.va_losses, self.va_snrs = empty_array((3,self.n_epochs))
             
@@ -213,7 +225,8 @@ class GRU_Net(object):
                     tf.logging.debug('Epoch {} SNR: {:.2f}'.format(i, self.va_snrs[i]))
                     
                     pbar.update(1)
-                    
+                     
+            self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.va_snrs.max())
             # Save the model
             saver.save(sess, self.model_nm)
             tf.logging.info('Saving parameters to {}'.format(self.model_nm))
