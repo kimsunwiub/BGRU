@@ -1,7 +1,8 @@
 from matplotlib import gridspec, pyplot as plt
 from argparse import ArgumentParser
 from datetime import datetime
-import pickle
+import _pickle as pickle
+import logging
 import os 
 
 from Models import GRU_Net
@@ -21,10 +22,15 @@ def parse_arguments():
     parser.add_argument("gpu_id", type=int,
                         help="GPU ID")
     
+    
     parser.add_argument("-f", "--feat", type=int, default=513,
                         help="Number of features (Default: 513)")
     parser.add_argument("-l", "--n_layers", type=int, default=2,
-                        help="Number of BGRU layers (Default: 2)") 
+                        help="Number of BGRU layers (Default: 2)")
+    parser.add_argument("-k", "--pickled_data", type=str, default=None,
+                        help="Pretrained data to load")
+    parser.add_argument("-o", "--model_nm", type=str, default=None,
+                        help="Pretrained model to load")
     parser.add_argument("-b", "--n_bits", type=int, default=4,
                         help="Number of bits used for quantization (Default: 4)")
     parser.add_argument("-s", "--state_sz", type=int, default=1024,
@@ -45,6 +51,12 @@ def parse_arguments():
 
     return parser.parse_args()
 
+def mod_name(old_name, curr_n_epochs):
+    prev_n_epoch = int(old_name.split('_')[-1])
+    name_format = '_'.join(old_name.split('_')[:-1])
+    new_name = '{}_{}'.format(name_format, curr_n_epochs + prev_n_epoch)
+    return new_name
+
 def plot_results(model, fn):
     plt.switch_backend('agg')
     gs = gridspec.GridSpec(1, 3, width_ratios=[1,1,1])
@@ -53,15 +65,33 @@ def plot_results(model, fn):
     plt.subplot(gs[2]); plt.plot(model.va_snrs); plt.title('Va_SNRs')
     plt.tight_layout()
     plt.savefig('%s.png' % fn)
+    logging.info('Saving results to {}'.format(fn))
+
 
 def main():
     args = parse_arguments()
-    data = SourceSeparation_DataSet(args.data_sz, args.n_noise)
+    logger = logging.getLogger(); logger.setLevel(logging.INFO)
+    if args.pickled_data:
+        with open(args.pickled_data, 'rb') as f:
+            data = pickle.load(f)
+        logger.info('Restoring data from {}'.format(args.pickled_data))
+    else:
+        data = SourceSeparation_DataSet(args.data_sz, args.n_noise)
     os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"]=str(args.gpu_id)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
     t_stamp = '{0:%m.%d(%H:%M)}'.format(datetime.now())
     
+    is_restore = False
+    if args.model_nm:
+        is_restore = True
+        run_info = mod_name(args.model_nm, args.n_epochs)
+        args.model_nm = '{}/{}'.format(args.dir_models, args.model_nm)
+    else:
+        run_info = '{}_lr({})_batchsz({})_bptt({})_data({})_noise({})_{}'.format(
+            t_stamp, args.learning_rate, args.batch_sz, args.bptt, data.data_sz, data.n_noise, args.n_epochs)
+        args.model_nm = '{}/{}'.format(args.dir_models, run_info)
+        
     model = GRU_Net(args.perc,                 
                     args.bptt,
                     args.n_epochs, 
@@ -72,12 +102,12 @@ def main():
                     args.n_layers,
                     args.state_sz,
                     args.verbose,
-                    args.restore_model,
-                    args.dir_models)
+                    is_restore,
+                    args.model_nm)
     model.train(data)
-    
-#     save_result_name = '{}/{}_SNR({:.1f})'.format(args.dir_results, run_info, model.va_snrs.max())
-    plot_results(model, args.dir_results)
 
+    plot_name = '{}/{}_SNR({:.1f})'.format(args.dir_results, run_info, model.va_snrs.max())
+    plot_results(model, plot_name)
+    
 if __name__ == "__main__":
     main()

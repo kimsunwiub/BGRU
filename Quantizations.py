@@ -1,6 +1,7 @@
 from sklearn.mixture import GaussianMixture
 from tqdm import tqdm
 import numpy as np
+import logging
 
 class Lloyd_Max(object):
     def __init__(self, n_bits=4, perc=0.1, gmm=None):
@@ -35,6 +36,7 @@ class Lloyd_Max(object):
     
     def quantize(self, X, fit=False):
         if fit:
+            logging.info("Lloyd Max: GMM Fitting...")
             self.fit(X)
             
         def _quantize(X):

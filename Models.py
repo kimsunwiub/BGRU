@@ -1,8 +1,15 @@
 from GRU_Modifications import TanhGRUCell
 from librosa.core import istft as istft
+import _pickle as pickle
 import tensorflow as tf
 from tqdm import tqdm
 import numpy as np
+
+def mod_name(old_name, curr_n_epochs):
+    prev_n_epoch = int(old_name.split('_')[-1])
+    name_format = '_'.join(old_name.split('_')[:-1])
+    new_name = '{}_{}'.format(name_format, curr_n_epochs + prev_n_epoch)
+    return new_name
 
 def empty_array(size):
     """
@@ -39,10 +46,7 @@ def compute_SNR(S, S_hat):
 class GRU_Net(object):
 
     # <Idea> Does Binary part also go here with pretraining?
-    def __init__(self, perc, bptt, n_epochs, learning_rate, batch_sz, feat, n_bits, n_layers, state_sz, verbose, restore_model, dir_models):
-        
-        # <TODO>
-        # Change '_more' to # epoch form
+    def __init__(self, perc, bptt, n_epochs, learning_rate, batch_sz, feat, n_bits, n_layers, state_sz, verbose, is_restore, model_nm):
         """
         feat: Number of features / classes
         """
@@ -56,11 +60,13 @@ class GRU_Net(object):
         self.batch_sz = batch_sz
         self.state_size = state_sz
         self.learning_rate = learning_rate
-        self.dir_models = dir_models
-        self.restore_model = restore_model
+        self.model_nm = model_nm
+        self.is_restore = is_restore
+        
+        if verbose: tf.logging.set_verbosity(tf.logging.DEBUG)
+        else: tf.logging.set_verbosity(tf.logging.INFO)
         
         tf.reset_default_graph()
-        if verbose: tf.logging.set_verbosity(tf.logging.DEBUG)
         self.build_inputs()
         self.build_GRU()
         self.build_loss()
@@ -97,12 +103,6 @@ class GRU_Net(object):
         self.op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss)
     
     def train(self, data):
-        
-        def mod_name(old_name):
-            prev_n_epoch = int(old_name.split('_')[-1])
-            name_format = '_'.join(old_name.split('_')[:-1])
-            new_name = '{}_{}'.format(name_format, self.n_epochs + prev_n_epoch)
-            return new_name
         
         def _train(data_tr):
             """
@@ -188,7 +188,7 @@ class GRU_Net(object):
                 signal_snrs[i] = sample_snr
                 
             return signal_losses.mean(), signal_snrs.mean()
-
+        
         # Modify configuration for proper GPU memory usage
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -199,13 +199,9 @@ class GRU_Net(object):
             
             # Initialize saver and result arrays
             saver = tf.train.Saver(saver_dict(tf.trainable_variables()))  
-            if self.restore_model:
-                saver.restore(sess, '{}'.format(self.restore_model))
-                save_nm = mod_name(self.restore_model)
-            else:
-                t_stamp = '{0:%m.%d(%H:%M)}'.format(datetime.now())
-                save_nm = '{}/{}_lr({})_batchsz({})_bptt({})_data({})_noise({})_{}'.format(
-                    self.dir_models, t_stamp, self.learning_rate, self.batch_sz, self.bptt, data.data_sz, data.n_noise, self.n_epochs)    
+            if self.is_restore:
+                saver.restore(sess, '{}'.format(self.model_nm))
+                self.model_nm = mod_name(self.model_nm, self.n_epochs)
             
             self.tr_losses, self.va_losses, self.va_snrs = empty_array((3,self.n_epochs))
             
@@ -219,6 +215,12 @@ class GRU_Net(object):
                     pbar.update(1)
                     
             # Save the model
-            saver.save(sess, save_nm)
-            tf.logging.debug('Saving parameters to {}'.format(save_nm))
+            saver.save(sess, self.model_nm)
+            tf.logging.info('Saving parameters to {}'.format(self.model_nm))
+            
+            # Save the data
+            if not self.is_restore:
+                with open('{}.pkl'.format(self.model_nm), 'wb') as f: 
+                    pickle.dump(data, f)
+                tf.logging.info('Saving data to {}.pkl'.format(self.model_nm))
             
