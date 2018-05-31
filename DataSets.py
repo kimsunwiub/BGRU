@@ -7,7 +7,7 @@ import os
 EPS = 1e-7
 
 class SourceSeparation_DataSet(object):
-    def __init__(self, data_sz, n_noise):
+    def __init__(self, data_sz, n_noise, is_quantize=None):
         self.train = {}
         self.test = {}
         self.data_sz = data_sz
@@ -15,7 +15,8 @@ class SourceSeparation_DataSet(object):
         self.sr = 16000
         self.Lloyd_Max = Lloyd_Max()
         self.load()
-        self.quantize()
+        if is_quantize:
+            self.quantize()
         
         # <TODO> LM perc not accounted
     

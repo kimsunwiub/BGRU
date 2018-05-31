@@ -32,8 +32,8 @@ def parse_arguments():
                         help="Pretrained data to load")
     parser.add_argument("-o", "--model_nm", type=str, default=None,
                         help="Pretrained model to load")
-    parser.add_argument("-b", "--n_bits", type=int, default=4,
-                        help="Number of bits used for quantization (Default: 4)")
+    parser.add_argument("-b", "--n_bits", type=int, default=None,
+                        help="Number of bits used for quantization (Default: None)")
     parser.add_argument("-s", "--state_sz", type=int, default=1024,
                         help="Number of hidden units in each layer (Default: 1024)")
     parser.add_argument("-p", "--perc", type=float, default=0.1,
@@ -101,8 +101,8 @@ def main():
         run_info = mod_name(args.model_nm, args.n_epochs)
         args.model_nm = '{}/{}'.format(args.dir_models, args.model_nm)
     else:
-        run_info = '{}_lr({})_batchsz({})_bptt({})_data({})_noise({})'.format(
-            t_stamp, args.learning_rate, args.batch_sz, args.bptt, data.data_sz, data.n_noise)
+        run_info = '{}_lr({})_batchsz({})_bptt({})_data({})_noise({})_bits({})'.format(
+            t_stamp, args.learning_rate, args.batch_sz, args.bptt, data.data_sz, data.n_noise, args.n_bits)
         args.model_nm = '{}/{}'.format(args.dir_models, run_info)
     model = GRU_Net(args.perc,                 
                     args.bptt,
@@ -110,12 +110,12 @@ def main():
                     args.learning_rate, 
                     args.batch_sz, 
                     args.feat,
-                    args.n_bits,
                     args.n_layers,
                     args.state_sz,
                     args.verbose,
                     is_restore,
-                    args.model_nm)
+                    args.model_nm,
+                    args.n_bits)
     model.train(data)
 
     if is_restore:

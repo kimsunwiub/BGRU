@@ -4,7 +4,6 @@ import _pickle as pickle
 import tensorflow as tf
 from tqdm import tqdm
 import numpy as np
-import re
 
 def mod_name(prev_name, n_epochs, snr=None):
     curr_split = []    
@@ -59,7 +58,7 @@ def compute_SNR(S, S_hat):
 class GRU_Net(object):
 
     # <Idea> Does Binary part also go here with pretraining?
-    def __init__(self, perc, bptt, n_epochs, learning_rate, batch_sz, feat, n_bits, n_layers, state_sz, verbose, is_restore, model_nm):
+    def __init__(self, perc, bptt, n_epochs, learning_rate, batch_sz, feat, n_layers, state_sz, verbose, is_restore, model_nm, n_bits):
         """
         feat: Number of features / classes
         """
@@ -67,7 +66,6 @@ class GRU_Net(object):
         self.perc = perc
         self.bptt = bptt
         self.feat = feat
-        self.n_bits = n_bits
         self.n_layers = n_layers
         self.n_epochs = n_epochs
         self.batch_sz = batch_sz
@@ -75,6 +73,7 @@ class GRU_Net(object):
         self.learning_rate = learning_rate
         self.model_nm = model_nm
         self.is_restore = is_restore
+        self.n_bits = n_bits
         
         if verbose: tf.logging.set_verbosity(tf.logging.DEBUG)
         else: tf.logging.set_verbosity(tf.logging.INFO)
@@ -86,8 +85,12 @@ class GRU_Net(object):
         self.build_optimizer()
     
     def build_inputs(self):
-        self.inputs = tf.placeholder(tf.float32, 
-                        [None, None, self.feat * self.n_bits]) 
+        if self.n_bits:
+            self.inputs = tf.placeholder(tf.float32, 
+                            [None, None, self.feat * self.n_bits]) 
+        else:
+            self.inputs = tf.placeholder(tf.float32, 
+                            [None, None, self.feat]) 
         self.targets = tf.placeholder(tf.float32, 
                         [None, None, self.feat])
         
@@ -130,21 +133,24 @@ class GRU_Net(object):
                 # Batch inputs
                 start_idx = i*self.batch_sz
                 end_idx = (i+1)*self.batch_sz
-                X_bin = np.array(data_tr['M_bin'][start_idx:end_idx], dtype=np.float32)
+                if self.n_bits:
+                    X = np.array(data_tr['M_bin'][start_idx:end_idx], dtype=np.float32)
+                else:
+                    X = np.array(data_tr['M'][start_idx:end_idx]).real.astype(np.float32)
                 y = np.array(data_tr['y'][start_idx:end_idx], dtype=np.float32)
                 
                 # Run model w.r.t. lookback length
-                if self.bptt == -1: local_bptt = X_bin[0].shape[0]
+                if self.bptt == -1: local_bptt = X[0].shape[0]
                 else: local_bptt = self.bptt
-                assert (local_bptt <= X_bin[0].shape[0])
+                assert (local_bptt <= X[0].shape[0])
                 
-                feed_sz = X_bin[0].shape[0]//local_bptt
+                feed_sz = X[0].shape[0]//local_bptt
                 feed_losses = empty_array(feed_sz)
                 
                 for j in range(feed_sz):
                     start_idx = j*local_bptt
                     end_idx = (j+1)*local_bptt
-                    X_feed = X_bin[:,start_idx:end_idx]
+                    X_feed = X[:,start_idx:end_idx]
                     y_feed = y[:,start_idx:end_idx]
                     
                     _, loss = sess.run(
@@ -171,14 +177,17 @@ class GRU_Net(object):
                 # Batch inputs
                 start_idx = i*self.batch_sz
                 end_idx = (i+1)*self.batch_sz
-                X_bin = np.array(data_va['M_bin'][start_idx:end_idx], dtype=np.float32)
+                if self.n_bits:
+                    X = np.array(data_va['M_bin'][start_idx:end_idx], dtype=np.float32)
+                else:
+                    X = np.array(data_va['M'][start_idx:end_idx]).real.astype(np.float32)
                 y = np.array(data_va['y'][start_idx:end_idx], dtype=np.float32)
                 
                 # Run model
                 loss, yhat = sess.run(
                     [self.loss, self.logits],
                     feed_dict={
-                        self.inputs: X_bin,
+                        self.inputs: X,
                         self.targets: y
                     })
                 
