@@ -1,27 +1,59 @@
-from GRU_Modifications import TanhGRUCell
+from GRU_Modifications import TanhGRUCell, BinaryGRUCell
+from tensorflow.python.ops import math_ops
 from librosa.core import istft as istft
 import _pickle as pickle
 import tensorflow as tf
 from tqdm import tqdm
 import numpy as np
+import re
 
-def mod_name(prev_name, n_epochs, snr=None):
-    curr_split = []    
-    is_first = True
-    for sp in prev_name.split('_'):
+def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None):
+    
+    def mod_n_epochs(sp, n_epochs):
+        prev_n_epochs = int(re.split(r'[()]', sp)[1])
+        sp = 'epoch({})'.format(prev_n_epochs + n_epochs)
+        return sp
+    
+    def mod_sp(sp, n_epochs, snr):
         if 'epoch' in sp:
-            is_first = False
-            prev_n_epochs = int(re.split(r'[()]', sp)[1])
-            sp = 'epoch({})'.format(prev_n_epochs + n_epochs)
+            sp = mod_n_epochs(sp, n_epochs)
         elif snr and 'SNR' in sp:
-            is_first = False
             sp = 'SNR({:.4f})'.format(snr)
-        curr_split.append(sp)
+        return sp
+    
+    mod_split = []
+    is_first = True
+    
+    if is_pretrain:
+        for sp in prev_name.split('_'):
+            if 'epoch' in sp:
+                is_first = False
+            sp = mod_sp(sp, n_epochs, snr)
+            mod_split.append(sp)
+            
+    else:
+        prev_split = prev_name.split('pretrain')
+        
+        if len(prev_split) == 2:
+            prev_split[-1] += '_'
+            prev_split.append('(False)')
+        else:
+            is_first = False
+            temp = []
+            for sp in prev_split[-1].split('_'):
+                sp = mod_sp(sp, n_epochs, snr)
+                temp.append(sp)
+                
+            prev_split[-1] = '_'.join(temp)
+
+        mod_split = 'pretrain'.join(prev_split).split('_')
+        
     if is_first:
-        curr_split.append('epoch({})'.format(n_epochs))
-        if snr:
-            curr_split.append('SNR({:.4f})'.format(snr))
-    return '_'.join(curr_split)
+        mod_split.append('lr({})_epoch({})'.format(lr, n_epochs))
+        if snr: 
+            mod_split.append('SNR({:.4f})'.format(snr))
+        
+    return '_'.join(mod_split)
 
 def empty_array(size):
     """
@@ -31,13 +63,11 @@ def empty_array(size):
         size: Size of the array
     """
     return np.full(size, np.nan)
-        
+
 def saver_dict(trainable_variables):
-    # <Refactor> Use tf scopes. Try not to make this a fn.
-    names = [
-        'W_gate_0', 'b_gate_0', 'W_cand_0', 'b_cand_0', 'W_gate_1', 
-        'b_gate_1', 'W_cand_1', 'b_cand_1', 'W_out', 'b_out'
-    ]
+    names = ['W_out', 'b_out',
+        'gk0','gb0', 'ck0', 'cb0',
+        'gk1','gb1', 'ck1', 'cb1']
     saver_dict = {}
     for n,t in zip(names, trainable_variables):
         saver_dict[n] = t
@@ -57,23 +87,22 @@ def compute_SNR(S, S_hat):
     
 class GRU_Net(object):
 
-    # <Idea> Does Binary part also go here with pretraining?
-    def __init__(self, perc, bptt, n_epochs, learning_rate, batch_sz, feat, n_layers, state_sz, verbose, is_restore, model_nm, n_bits):
+    def __init__(self, perc, bptt, n_epochs, learning_rate, batch_sz, feat, n_layers, state_sz, verbose, is_restore, model_nm, n_bits, is_pretrain):
         """
         feat: Number of features / classes
         """
-        # <TODO> Reorder param
         self.perc = perc
         self.bptt = bptt
         self.feat = feat
         self.n_layers = n_layers
         self.n_epochs = n_epochs
         self.batch_sz = batch_sz
-        self.state_size = state_sz
+        self.state_sz = state_sz
         self.learning_rate = learning_rate
         self.model_nm = model_nm
         self.is_restore = is_restore
         self.n_bits = n_bits
+        self.is_pretrain = is_pretrain
         
         if verbose: tf.logging.set_verbosity(tf.logging.DEBUG)
         else: tf.logging.set_verbosity(tf.logging.INFO)
@@ -93,22 +122,69 @@ class GRU_Net(object):
                             [None, None, self.feat]) 
         self.targets = tf.placeholder(tf.float32, 
                         [None, None, self.feat])
-        
+
     def build_GRU(self):
-        cell = tf.contrib.rnn.MultiRNNCell(
-            [TanhGRUCell(self.state_size) for _ in range(self.n_layers)]
-        )
+        
+        if self.is_pretrain:
+            multicell = tf.contrib.rnn.MultiRNNCell(
+                [TanhGRUCell(self.state_sz) for _ in range(self.n_layers)]
+                )
+            initializer = tf.contrib.layers.xavier_initializer(uniform=False)
+            W_out = tf.Variable(initializer([self.state_sz, self.feat]))
+            b_out = tf.Variable(initializer([self.feat]))
             
-        states_series, current_state = tf.nn.dynamic_rnn(cell, self.inputs, dtype=tf.float32)
-
-        outputs = tf.reshape(states_series,[-1,self.state_size])
-
-        initializer = tf.contrib.layers.xavier_initializer(uniform=False)
-        W_out = tf.Variable(initializer([self.state_size, self.feat]))
-        b_out = tf.Variable(initializer([self.feat]))
+        else:    
+            bW_out = tf.get_variable("W_out", [self.state_sz, self.feat])
+            bb_out = tf.get_variable("b_out", [self.feat])
             
-        self.logits = tf.sigmoid(tf.matmul(outputs, tf.tanh(W_out)) + tf.tanh(b_out))
-        self.logits = tf.reshape(self.logits, [self.batch_sz, -1, self.feat])
+            gk0 = tf.get_variable("gk0", [self.feat*self.n_bits+self.state_sz, self.state_sz*2])
+            gb0 = tf.get_variable("gb0", [self.state_sz*2])
+            ck0 = tf.get_variable("ck0", [self.feat*self.n_bits+self.state_sz, self.state_sz])
+            cb0 = tf.get_variable("cb0", [self.state_sz])
+
+            gk1 = tf.get_variable("gk1", [self.state_sz*2, self.state_sz*2])
+            gb1 = tf.get_variable("gb1", [self.state_sz*2])
+            ck1 = tf.get_variable("ck1", [self.state_sz*2, self.state_sz])
+            cb1 = tf.get_variable("cb1", [self.state_sz])
+
+            tanh_gk0 = math_ops.tanh(gk0)
+            tanh_gb0 = math_ops.tanh(gb0)
+            tanh_ck0 = math_ops.tanh(ck0)
+            tanh_cb0 = math_ops.tanh(cb0)
+
+            tanh_gk1 = math_ops.tanh(gk1)
+            tanh_gb1 = math_ops.tanh(gb1)
+            tanh_ck1 = math_ops.tanh(ck1)
+            tanh_cb1 = math_ops.tanh(cb1)
+            
+            cells = []
+            cell = BinaryGRUCell(self.state_sz, tanh_gk0, tanh_gb0, tanh_ck0, tanh_cb0); cells.append(cell)
+            cell = BinaryGRUCell(self.state_sz, tanh_gk1, tanh_gb1, tanh_ck1, tanh_cb1); cells.append(cell)
+            multicell = tf.contrib.rnn.MultiRNNCell(cells)
+            W_out = math_ops.tanh(bW_out)
+            b_out = math_ops.tanh(bb_out)
+            
+        states_series, current_state = tf.nn.dynamic_rnn(multicell, self.inputs, dtype=tf.float32)
+        outputs = tf.reshape(states_series,[-1,self.state_sz])
+
+        if self.is_pretrain:
+            self.logits = tf.sigmoid(tf.matmul(outputs, tf.tanh(W_out)) + tf.tanh(b_out))
+            self.logits = tf.reshape(self.logits, [self.batch_sz, -1, self.feat])
+        else:
+            def binary_with_sigmoid_grad(x):
+                g = tf.get_default_graph()
+                with g.gradient_override_map({"Sign":"SigmoidGrads"}):
+                    return 0.5 * (tf.sign(x)+1)
+            
+            def bipolar_binarize_with_tanh_grad(x):
+                # <Change name>
+                g = tf.get_default_graph()
+                with g.gradient_override_map({"Sign":"TanhGrads"}):
+                    return tf.sign(x)
+            
+            self.logits = tf.sigmoid(tf.matmul(outputs, 
+                bipolar_binarize_with_tanh_grad(W_out)) + bipolar_binarize_with_tanh_grad(b_out))
+            self.logits = tf.reshape(self.logits, [self.batch_sz, -1, self.feat])
         
     def build_loss(self):
         logits_1d = tf.reshape(self.logits, [-1])
@@ -234,8 +310,8 @@ class GRU_Net(object):
                     tf.logging.debug('Epoch {} SNR: {:.2f}'.format(i, self.va_snrs[i]))
                     
                     pbar.update(1)
-                     
-            self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.va_snrs.max())
+            
+            self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_pretrain, self.va_snrs.max(), self.learning_rate)
             # Save the model
             saver.save(sess, self.model_nm)
             tf.logging.info('Saving parameters to {}'.format(self.model_nm))

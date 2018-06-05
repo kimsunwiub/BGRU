@@ -1,4 +1,5 @@
 from matplotlib import gridspec, pyplot as plt
+import tensorflow as tf
 from argparse import ArgumentParser
 from datetime import datetime
 import _pickle as pickle
@@ -28,10 +29,12 @@ def parse_arguments():
                         help="Number of features (Default: 513)")
     parser.add_argument("-l", "--n_layers", type=int, default=2,
                         help="Number of BGRU layers (Default: 2)")
-    parser.add_argument("-k", "--pickled_data", type=str, default=None,
-                        help="Pretrained data to load")
+    parser.add_argument("-e", "--is_pretrain", action='store_true',
+                        help = "Use this option to pretrain")
     parser.add_argument("-o", "--model_nm", type=str, default=None,
                         help="Pretrained model to load")
+    parser.add_argument("-k", "--pickled_data", type=str, default=None,
+                        help="Pretrained data to load")
     parser.add_argument("-b", "--n_bits", type=int, default=None,
                         help="Number of bits used for quantization (Default: None)")
     parser.add_argument("-s", "--state_sz", type=int, default=1024,
@@ -47,28 +50,58 @@ def parse_arguments():
     parser.add_argument("-n", "--n_noise", type=str, default='few',
                         help="Number of noise signals (Default: few(5)) [Options: few(5), many(10)]")
     
-    parser.add_argument("-v", "--verbose",  action='store_true', default=False,
-        help = "Print SNR outputs from each epoch (Default: False)")
+    parser.add_argument("-v", "--verbose",  action='store_true',
+                        help = "Print SNR outputs from each epoch (Default: False)")
 
     return parser.parse_args()
 
-def mod_name(prev_name, n_epochs, snr=None):
-    curr_split = []    
-    is_first = True
-    for sp in prev_name.split('_'):
+def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None):
+    
+    def mod_n_epochs(sp, n_epochs):
+        prev_n_epochs = int(re.split(r'[()]', sp)[1])
+        sp = 'epoch({})'.format(prev_n_epochs + n_epochs)
+        return sp
+    
+    def mod_sp(sp, n_epochs, snr):
         if 'epoch' in sp:
-            is_first = False
-            prev_n_epochs = int(re.split(r'[()]', sp)[1])
-            sp = 'epoch({})'.format(prev_n_epochs + n_epochs)
+            sp = mod_n_epochs(sp, n_epochs)
         elif snr and 'SNR' in sp:
-            is_first = False
             sp = 'SNR({:.4f})'.format(snr)
-        curr_split.append(sp)
+        return sp
+    
+    mod_split = []
+    is_first = True
+    
+    if is_pretrain:
+        for sp in prev_name.split('_'):
+            if 'epoch' in sp:
+                is_first = False
+            sp = mod_sp(sp, n_epochs, snr)
+            mod_split.append(sp)
+            
+    else:
+        prev_split = prev_name.split('pretrain')
+        
+        if len(prev_split) == 2:
+            prev_split[-1] += '_'
+            prev_split.append('(False)')
+        else:
+            is_first = False
+            temp = []
+            for sp in prev_split[-1].split('_'):
+                sp = mod_sp(sp, n_epochs, snr)
+                temp.append(sp)
+                
+            prev_split[-1] = '_'.join(temp)
+
+        mod_split = 'pretrain'.join(prev_split).split('_')
+        
     if is_first:
-        curr_split.append('epoch({})'.format(n_epochs))
-        if snr:
-            curr_split.append('SNR({:.4f})'.format(snr))
-    return '_'.join(curr_split)
+        mod_split.append('lr({})_epoch({})'.format(lr, n_epochs))
+        if snr: 
+            mod_split.append('SNR({:.4f})'.format(snr))
+        
+    return '_'.join(mod_split)
 
 def plot_results(model, fn):
     plt.switch_backend('agg')
@@ -79,6 +112,16 @@ def plot_results(model, fn):
     plt.tight_layout()
     plt.savefig('%s.png' % fn)
     logging.info('Saving results to {}'.format(fn))
+
+@tf.RegisterGradient("SigmoidGrads")
+def sigmoid_grad(op, grad):
+    x, = op.inputs
+    return grad * x * (1.0 - x) * 2
+
+@tf.RegisterGradient("TanhGrads")
+def tanh_grad(op, grad):
+    x, = op.inputs
+    return grad * (1-tf.pow(tf.tanh(x), 2))
 
 
 def main():
@@ -98,12 +141,13 @@ def main():
     is_restore = False
     if args.model_nm:
         is_restore = True
-        run_info = mod_name(args.model_nm, args.n_epochs)
+        run_info = mod_name(args.model_nm, args.n_epochs, args.is_pretrain, 1, args.learning_rate)
         args.model_nm = '{}/{}'.format(args.dir_models, args.model_nm)
     else:
-        run_info = '{}_lr({})_batchsz({})_bptt({})_data({})_noise({})_bits({})'.format(
-            t_stamp, args.learning_rate, args.batch_sz, args.bptt, data.data_sz, data.n_noise, args.n_bits)
+        run_info = '{}_pretrain({})_batchsz({})_bptt({})_data({})_noise({})_bits({})'.format(
+            t_stamp, args.is_pretrain, args.batch_sz, args.bptt, data.data_sz, data.n_noise, args.n_bits)
         args.model_nm = '{}/{}'.format(args.dir_models, run_info)
+    
     model = GRU_Net(args.perc,                 
                     args.bptt,
                     args.n_epochs, 
@@ -115,12 +159,16 @@ def main():
                     args.verbose,
                     is_restore,
                     args.model_nm,
-                    args.n_bits)
+                    args.n_bits,
+                    args.is_pretrain)
     model.train(data)
 
     if is_restore:
         args.n_epochs = 0
-    plot_name = '{}/{}'.format(args.dir_results, mod_name(run_info, args.n_epochs, model.va_snrs.max()))
+    if args.is_pretrain:
+        plot_name = '{}/{}'.format(args.dir_results, mod_name(run_info, args.n_epochs, args.is_pretrain, model.va_snrs.max(), args.learning_rate))
+    else:
+        plot_name = '{}/{}'.format(args.dir_results, mod_name(run_info, args.n_epochs, args.is_pretrain, model.va_snrs.max()))
     plot_results(model, plot_name)
     
 if __name__ == "__main__":
