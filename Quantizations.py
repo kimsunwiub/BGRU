@@ -18,6 +18,7 @@ class Lloyd_Max(object):
         
         # Clustering
         X_subset = X[random_indices].reshape(-1,1)
+        
         gmm = GaussianMixture(n_components=n_clusters).fit(X_subset)
         gmm.means_.sort(axis=0) # <Check> Does this work?
         self.gmm = gmm 

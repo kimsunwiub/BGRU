@@ -7,18 +7,16 @@ import os
 EPS = 1e-7
 
 class SourceSeparation_DataSet(object):
-    def __init__(self, data_sz, n_noise, is_quantize=None):
+    def __init__(self, data_sz, n_noise, n_bits=4, perc=0.1, is_quantize=False):
         self.train = {}
         self.test = {}
         self.data_sz = data_sz
         self.n_noise = n_noise
         self.sr = 16000
-        self.Lloyd_Max = Lloyd_Max()
+        self.Lloyd_Max = Lloyd_Max(n_bits, perc)
         self.load()
         if is_quantize:
             self.quantize()
-        
-        # <TODO> LM perc not accounted
     
     def load(self):
         def get_speakers():
