@@ -24,6 +24,10 @@ def parse_arguments():
     parser.add_argument("gpu_id", type=int,
                         help="GPU ID")
     
+    parser.add_argument("-z", "--beta1", type=float, default=0.9,
+                        help="Beta1 value for AdamOptimizer (Default: 0.9)")
+    parser.add_argument("-y", "--beta2", type=float, default=0.999,
+                        help="Beta2 value for AdamOptimizer")
     
     parser.add_argument("-f", "--feat", type=int, default=513,
                         help="Number of features (Default: 513)")
