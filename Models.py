@@ -66,6 +66,7 @@ def empty_array(size):
 
 def saver_dict(trainable_variables):
     names = ['W_out', 'b_out',
+        'init_0', 'init_1',
         'gk0','gb0', 'ck0', 'cb0',
         'gk1','gb1', 'ck1', 'cb1']
     saver_dict = {}
@@ -87,7 +88,7 @@ def compute_SNR(S, S_hat):
     
 class GRU_Net(object):
 
-    def __init__(self, perc, bptt, n_epochs, learning_rate, batch_sz, feat, n_layers, state_sz, verbose, is_restore, model_nm, n_bits, is_pretrain):
+    def __init__(self, perc, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, feat, n_layers, state_sz, verbose, is_restore, model_nm, n_bits, is_pretrain):
         """
         feat: Number of features / classes
         """
@@ -99,6 +100,8 @@ class GRU_Net(object):
         self.batch_sz = batch_sz
         self.state_sz = state_sz
         self.learning_rate = learning_rate
+        self.beta1 = beta1
+        self.beta2 = beta2
         self.model_nm = model_nm
         self.is_restore = is_restore
         self.n_bits = n_bits
@@ -137,6 +140,9 @@ class GRU_Net(object):
             bW_out = tf.get_variable("W_out", [self.state_sz, self.feat])
             bb_out = tf.get_variable("b_out", [self.feat])
             
+            ini_0 = tf.get_variable("ini_0", [self.batch_sz, self.state_sz])
+            ini_1 = tf.get_variable("ini_1", [self.batch_sz, self.state_sz])
+            
             gk0 = tf.get_variable("gk0", [self.feat*self.n_bits+self.state_sz, self.state_sz*2])
             gb0 = tf.get_variable("gb0", [self.state_sz*2])
             ck0 = tf.get_variable("ck0", [self.feat*self.n_bits+self.state_sz, self.state_sz])
@@ -158,13 +164,17 @@ class GRU_Net(object):
             tanh_cb1 = math_ops.tanh(cb1)
             
             cells = []
+            # <TODO> Feed ini_0 and ini_1 to BGRUCell. Do after pretrain > 12
             cell = BinaryGRUCell(self.state_sz, tanh_gk0, tanh_gb0, tanh_ck0, tanh_cb0); cells.append(cell)
             cell = BinaryGRUCell(self.state_sz, tanh_gk1, tanh_gb1, tanh_ck1, tanh_cb1); cells.append(cell)
             multicell = tf.contrib.rnn.MultiRNNCell(cells)
             W_out = math_ops.tanh(bW_out)
             b_out = math_ops.tanh(bb_out)
-            
-        states_series, current_state = tf.nn.dynamic_rnn(multicell, self.inputs, dtype=tf.float32)
+        
+        # <TODO> Test out different init states like 
+        # https://r2rt.com/non-zero-initial-states-for-recurrent-neural-networks.html
+        init_state = (tf.Variable(initializer([self.batch_sz, self.state_sz])), tf.Variable(initializer([self.batch_sz, self.state_sz])))
+        states_series, current_state = tf.nn.dynamic_rnn(multicell, self.inputs, initial_state=init_state, dtype=tf.float32)
         outputs = tf.reshape(states_series,[-1,self.state_sz])
 
         if self.is_pretrain:
@@ -192,7 +202,7 @@ class GRU_Net(object):
         self.loss = tf.reduce_mean(tf.square(tf.subtract(logits_1d, labels)))
         
     def build_optimizer(self):
-        self.op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss)
+        self.op = tf.train.AdamOptimizer(learning_rate=self.learning_rate, beta1=self.beta1, beta2=self.beta2).minimize(self.loss)
     
     def train(self, data):
         
@@ -216,12 +226,15 @@ class GRU_Net(object):
                 y = np.array(data_tr['y'][start_idx:end_idx], dtype=np.float32)
                 
                 # Run model w.r.t. lookback length
-                if self.bptt == -1: local_bptt = X[0].shape[0]
+                local_n = X[0].shape[0]
+                if self.bptt == -1: local_bptt = local_n
                 else: local_bptt = self.bptt
-                assert (local_bptt <= X[0].shape[0])
+                assert (local_bptt <= local_n)
                 
-                feed_sz = X[0].shape[0]//local_bptt
+                feed_sz = local_n//local_bptt
                 feed_losses = empty_array(feed_sz)
+                
+                tf.logging.debug('BPTT({}) caused signal({}) to be truncated by {}'.format(local_bptt, local_n, local_n % local_bptt))
                 
                 for j in range(feed_sz):
                     start_idx = j*local_bptt
