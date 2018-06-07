@@ -1,0 +1,1002 @@
+  462  cd lib
+  463  ls
+  464  cd ..
+  465  cd /
+  466  cd lib
+  467  ls
+  468  cd
+  469  module load anaconda
+  470  source activate e533
+  471  ls
+  472  conda
+  473  conda install tqdm
+  474  conda create -n my_e533 --clone="/opt/Anaconda3-5.0.1/envs/e533"
+  475  source deactivate
+  476  source activate my_e533
+  477  conda install tqdm
+  478  ls
+  479  jupyter-notebook 
+  480  ls
+  481  conda list
+  482  conda list less
+  483  conda list | grep lib
+  484  conda list | grep tensor
+  485  conda uninsta
+  486  conda update tensorflow-gpu
+  487  conda list | grep tensorflow-gpu
+  488  conda update tensorflow-gpu
+  489  conda update tensorflow
+  490  conda update -f -c conda-forge tensorflow-gpu
+  491  conda update -f -c conda-forge tensorflow
+  492  conda install ten
+  493  conda update conda
+  494  pip 
+  495  pip install tensorflow-gpu upgrade
+  496  pip install tensorflow-tensorboard --upgrade
+  497  conda list | grep ten
+  498  jupyter-notebook 
+  499  p
+  500  python3
+  501  source deactivate
+  502  python3
+  503  module purge
+  504  module load cuda
+  505  module load cudnn
+  506  python3
+  507  pip --help
+  508  pip show
+  509  apt-get
+  510  module list
+  511  python -v
+  512  cd /usr/lib64/
+  513  ls
+  514  ls | grep python
+  515  cd
+  516  ls
+  517  wget https://www.python.org/ftp/python/3.6.5/Python-3.6.5.tgz
+  518  ls
+  519  tar -zxvf Python-3.6.5.tgz 
+  520  cd Python-3.6.5
+  521  ls
+  522  ./config
+  523  ./configure 
+  524  pip3
+  525  pip
+  526  pip -V
+  527  make
+  528  ls
+  529  ./python
+  530  ls
+  531  install
+  532  make install
+  533  ls
+  534  python
+  535  ls
+  536  virtualenv
+  537  virtualenv -v
+  538  python3
+  539  ls
+  540  python
+  541  ./python
+  542  ls
+  543  cat install-sh 
+  544  vim install-sh 
+  545  ls
+  546  ./install-sh 
+  547  vim python-config.py 
+  548  ls
+  549  python setup.py 
+  550  PYTHONPATH
+  551  $PYTHONPATH
+  552  printenv
+  553  ls
+  554  python -V
+  555  python -v
+  556  $PYTHONPATH
+  557  printenv
+  558  printenv | grep lib64
+  559  printenv | grep python
+  560  printenv | grep PYTHON
+  561  printenv | grep usr/lib
+  562  echo $PYTHONPATH
+  563  alias python=./python
+  564  python
+  565  exit
+  566  module list
+  567  python
+  568  module load cuda
+  569  module load cudnn
+  570  ls
+  571  cd Python-3.6.5
+  572  ls
+  573  alis python3=./python
+  574  alias python3=./python
+  575  python3
+  576  ls
+  577  cd
+  578  python3
+  579  module load cuda
+  580  module load cudnn
+  581  ls
+  582  alis python3=~/Python-3.6.5/python
+  583  alias python3=~/Python-3.6.5/python
+  584  python3
+  585  virtualenv --system-site-packages -p python3 tensorflow
+  586  source ~/.bashrc
+  587  python
+  588  python3
+  589  virtualenv --system-site-packages -p python3 tensorflow
+  590  python3 -m virtualenv env
+  591  ls
+  592  cd Python-3.6.5
+  593  ls
+  594  python -v
+  595  python3 -v
+  596  ls
+  597  python3 -m
+  598  python3 -h
+  599  python3 -m pip
+  600  yum
+  601  yum install
+  602  pip
+  603  pip install --upgrade
+  604  pip3 install --upgrade setuptools pip
+  605  pip install --upgrade pip
+  606  virtualenv --system-site-packages -p python3 tensorflow
+  607  apt-get install python-virtualenv
+  608  yum install python-virtualenv
+  609  virtualenv -p
+  610  virtualenv
+  611  virtualenv -p ~/Python-3.6.5/python
+  612  virtualenv -p ~/Python-3.6.5/python hello
+  613  ls
+  614  ./configure -h
+  615  ./configure -h | grep prefix
+  616  ./configure --prefix=~/temp
+  617  mkdir ~/temp
+  618  ls ~
+  619  ./configure --prefix=~/temp
+  620  pwd
+  621  ./configure --prefix=/N/u/kimsunw/temp
+  622  virtualenv -p ~/Python-3.6.5/python hello
+  623  virtualenv -p ~/temp/python hello
+  624  ls ~/temp/
+  625  ls ~/temp/lib
+  626  virtualenv -p ~/temp/lib/python hello
+  627  ls ~/temp/lib
+  628  cd ~/temp/
+  629  ls
+  630  cd lib64
+  631  ls
+  632  cd python2.7/
+  633  ls
+  634  cd 
+  635  ls
+  636  cd Python-3.6.5
+  637  ls
+  638  ./configure -h
+  639  virtualenv -p ~/Python-3.6.5/python hello
+  640  make install
+  641  ls
+  642  pip
+  643  pip -V
+  644  pip3
+  645  python
+  646  ls
+  647  ./python
+  648  ls
+  649  virtualenv -p ~/Python-3.6.5/python hello
+  650  ls
+  651  make clean
+  652  ls
+  653  make uninstall
+  654  pwd
+  655  ./configure --prefix=/N/u/kimsunw
+  656  make && make install
+  657  virtualenv -p ~/Python-3.6.5/python hello
+  658  ./configure --prefix=/N/u/kimsunw/Python-3.6.5/hello && make && make install 
+  659  virtualenv -p ~/Python-3.6.5/python hello
+  660  ./configure --prefix=/N/u/kimsunw/Python-3.6.5 && make && make install
+  661  virtualenv -p ~/Python-3.6.5/python he
+  662  ls
+  663  venv -p ~/Python-3.6.5/python he
+  664  pip install venc
+  665  pip install venv
+  666  exit
+  667  ls
+  668  . ssh_notebook.sh 
+  669  cd trou
+  670  cat sa
+  671  exit
+  672  ls
+  673  module load cuda
+  674  module load cudnn
+  675  module load anaconda
+  676  conda list
+  677  source activate my_e533
+  678  conda list | grep temn
+  679  conda list | grep ten
+  680  deactivate
+  681  source deactivate
+  682  source activate e533
+  683  pip install tensorflow-gpu --upgrade
+  684  pip install tqdm
+  685  source deactivate
+  686  source activate my_e533
+  687  ls
+  688  cd workspace/
+  689  jupyter-notebook
+  690  exit
+  691  ls
+  692  tmux ls
+  693  tmux a -t script
+  694  tmux a -t notebook
+  695  tmux a -t script
+  696  tmux a -t notebook
+  697  ssh r-005
+  698  tmux a -t notebook
+  699  ls
+  700  exit
+  701  module load cuda
+  702  module load cudnn
+  703  module load anaconda
+  704  source activate e533
+  705  jupyter-notebook 
+  706  exit
+  707  cat ssh_jupyter.sh 
+  708  ssh r-001
+  709  ls
+  710  squeue
+  711  ls
+  712  . romeo.sh 
+  713  salloc -p romeo --gres=gpu:2
+  714  ls
+  715  cd workspace/
+  716  ls
+  717  cd ..
+  718  ls
+  719  vim ssh_jupyter.sh 
+  720  . ssh_jupyter.sh 
+  721  vim ssh_jupyter.sh 
+  722  . ssh_jupyter.sh 
+  723  vim ssh_jupyter.sh 
+  724  . ssh_jupyter.sh 
+  725  . ssh_jupyter.sh 1
+  726  . ssh_jupyter.sh 12
+  727  . ssh_jupyter.sh 1
+  728  vim ssh_jupyter.sh 
+  729  . ssh_jupyter.sh 1
+  730  vim ssh_jupyter.sh 
+  731  . ssh_jupyter.sh 1
+  732  . ssh_jupyter.sh 
+  733  vim ssh_jupyter.sh 
+  734  . ssh_jupyter.sh 
+  735  vim ssh_jupyter.sh 
+  736  . ssh_jupyter.sh 
+  737  vim ssh_jupyter.sh 
+  738  . ssh_jupyter.sh 2
+  739  vim ssh_jupyter.sh 
+  740  . ssh_jupyter.sh 2
+  741  vim ssh_jupyter.sh 
+  742  . ssh_jupyter.sh 2
+  743  vim ssh_jupyter.sh 
+  744  . ssh_jupyter.sh 2
+  745  vim ssh_jupyter.sh 
+  746  . ssh_jupyter.sh 2
+  747  vim ssh_jupyter.sh 
+  748  . ssh_jupyter.sh 2
+  749  . ssh_jupyter.sh 
+  750  vim ssh_jupyter.s
+  751  vim ssh_jupyter.sh
+  752  . ssh_jupyter.sh 
+  753  vim ssh_jupyter.sh
+  754  . ssh_jupyter.sh 
+  755  vim ssh_jupyter.sh
+  756  . ssh_jupyter.sh 
+  757  vim ssh_jupyter.sh
+  758  . ssh_jupyter.sh 
+  759  vim ssh_jupyter.sh
+  760  . ssh_jupyter.sh 
+  761  vim ssh_jupyter.sh
+  762  . ssh_jupyter.sh 
+  763  vim ssh_jupyter.sh
+  764  . ssh_jupyter.sh 
+  765  vim ssh_jupyter.sh
+  766  . ssh_jupyter.sh 6
+  767  vim ssh_jupyter.sh
+  768  . ssh_jupyter.sh 6
+  769  . ssh_jupyter.sh 
+  770  vim ssh_jupyter.sh
+  771  . ssh_jupyter.sh 
+  772  . ssh_jupyter.sh 8
+  773  . ssh_jupyter.sh 
+  774  vim ssh_jupyter.sh
+  775  . ssh_jupyter.sh 8
+  776  vim ssh_jupyter.sh
+  777  . ssh_jupyter.sh 8
+  778  vim ssh_jupyter.sh
+  779  . ssh_jupyter.sh 8
+  780  vim ssh_jupyter.sh
+  781  . ssh_jupyter.sh 8
+  782  vim ssh_jupyter.sh
+  783  . ssh_jupyter.sh 8
+  784  . ssh_jupyter.sh -1
+  785  . ssh_jupyter.sh 6
+  786  . ssh_jupyter.sh 4
+  787  vim ssh_jupyter.sh
+  788  mv ssh_jupyter.sh ssh_notebook.sh
+  789  ls
+  790  cat ssh_tensorboard.sh 
+  791  rm ssh_tensorboard.sh 
+  792  ls
+  793  rm hog*
+  794  ls
+  795  cat wtv.sh 
+  796  ls
+  797  vim ssh_notebook.sh
+  798  . ssh_notebook.sh 
+  799  ls
+  800  exit
+  801  ls
+  802  tmux ls
+  803  tmux a -t notebook
+  804  tmux a -t script
+  805  exit
+  806  vim ~/.jupyter/jupyter_notebook_config.py 
+  807  ssh -L localhost:1589:localhost:1589 kimsunw@r-005
+  808  ls
+  809  module load cuda
+  810  module laod cudnn
+  811  module load cudnn
+  812  module load anaconda
+  813  source activate my_e533
+  814  jupyter-notebook 
+  815  ls
+  816  cat load_files.sh 
+  817  . load_files.sh 
+  818  jupyter-notebook 
+  819  ls
+  820  cat ssh_notebook.sh 
+  821  vim ssh_notebook.sh 
+  822  . ssh_notebook.sh 
+  823  cd workspace/
+  824  cd
+  825  ls
+  826  . load_files.sh 
+  827  cd workspace/
+  828  vim ~/load_files.sh 
+  829  ls
+  830  exit
+  831  jupyter-notebook
+  832  vim load_files.sh
+  833  . load_files.sh 
+  834  jupyter-notebook 
+  835  ls
+  836  cd workspace/
+  837  ls
+  838  jupyter-notebook 
+  839  ls
+  840  tmux ls
+  841  ls
+  842  exit
+  843  squeue
+  844  cat ssh_jupyter.sh 
+  845  ssh -L localhost:1479:localhost:1479 kimsunw@r-002
+  846  squeue
+  847  ssh -L localhost:1479:localhost:1479 kimsunw@r-002
+  848  squeue
+  849  ls
+  850  squeue
+  851  cat romeo.sh 
+  852  . romeo.sh 
+  853  squeue
+  854  cat romeo.sh 
+  855  . romeo.sh 
+  856  salloc -p romeo --gres=gpu:3
+  857  . ssh_notebook.sh 
+  858  ls
+  859  squeue
+  860  . ssh_notebook.sh 
+  861  cat ssh_notebook.sh 
+  862  . ssh_notebook.sh 
+  863  exit
+  864  cat ssh_jupyter.sh 
+  865  ssh -L 1479:127.0.0.1:6006 kimsunw@r-001
+  866  ls
+  867  . ssh_jupyter.sh 
+  868  ssh -L localhost:1479:localhost:1479 kimsunw@r-001
+  869  squeue
+  870  . romeo.sh 
+  871  exit
+  872  . load_files.sh 
+  873  jupyter-notebook 
+  874  exit
+  875   
+  876  exit
+  877  ls
+  878  tmux ls
+  879  tmux a -t notebook
+  880  ls
+  881  tmux ls
+  882  tmux a -t notebook
+  883  ls
+  884  cat ssh_notebook.sh 
+  885  . ssh_notebook.sh 
+  886  tmux ls
+  887  tmux s -t notebook
+  888  tmux -h
+  889  screen
+  890  screen -S notebook
+  891  screen -ls
+  892  screen -D notebook
+  893  screen -R notebook
+  894  ls
+  895  screen -ls
+  896  screen -r
+  897  screen -r notebook
+  898  screen -r 12164
+  899  screen -r 12164.notebook
+  900  screen -ls
+  901  screen  -list
+  902  screen -xr notebook
+  903  screen -Xr notebook
+  904  screen -X notebook
+  905  screen -x notebook
+  906  screen -r notebook
+  907  screen -RD notebook
+  908  screen -D
+  909  screen -ls
+  910  screen -d
+  911  exit
+  912  tmux -d
+  913  screen -d
+  914  screen -ls
+  915  exit
+  916  screen -ls
+  917  screen -d
+  918  exit
+  919  screen -ls
+  920  screen -d
+  921  exit
+  922  screen -d
+  923  exit
+  924  . load_files.sh 
+  925  jupyter-notebook 
+  926  ls
+  927  exit
+  928  screen -d
+  929  ls
+  930  . ssh_notebook.sh 
+  931  exit
+  932  screen -ls
+  933  screen -R notebook
+  934  screen -ls
+  935  screen -r
+  936  screen -l
+  937  screen -ls
+  938  screen -S notebook
+  939  screen -ls
+  940  screen -r
+  941  screen -t notebook
+  942  screen -S script
+  943  screen -ls
+  944  screen -r
+  945  screen -r script
+  946  screen -r notebook
+  947  screen -ls
+  948  screen -wipe
+  949  screen -ls
+  950  screen -r script
+  951  screen -ls
+  952  screen -r
+  953  screen -ls
+  954  screen -t notebook
+  955  ls
+  956  screen -ls
+  957  screen -r notebook
+  958  screen -r
+  959  screen -ls
+  960  screen -S notebook
+  961  screen -r notebook
+  962  screen -S script
+  963  screen -ls
+  964  screen -r notebook
+  965  exit
+  966  ls
+  967  screen -ls
+  968  screen -S notebook
+  969  screen -ls
+  970  screen -r script
+  971  screen -ls
+  972  screen -r notebook
+  973  nvidia-smi
+  974  screen -r script
+  975  screen -r notebook
+  976  exit
+  977  screen -ls
+  978  screen -r notebook
+  979  exit
+  980  screen -r notebook
+  981  nvidia-smi
+  982  ls
+  983  cat load_files.sh 
+  984  . load_files.sh 
+  985  nvidia-smi
+  986  nvidia-smi -q -d SUPOORTED_CLOCKS
+  987  top
+  988  nvidia-smi -q -d SUPOORTED_CLOCKS
+  989  nvidia-smi
+  990  top
+  991  nvidia-smi
+  992  ps
+  993  kill 15857
+  994  kill -9
+  995  pkill -9 15857
+  996  nvidia-smi
+  997  pkill -9 1585
+  998  pkill -9 python
+  999  nvidia-smi
+ 1000  exit
+ 1001  nvidia-smi
+ 1002  ls
+ 1003  . load_files.sh 
+ 1004  ls
+ 1005  nvidia-smi
+ 1006  ls
+ 1007  nvidia-smi
+ 1008  ls
+ 1009  cd BGRU
+ 1010  ls
+ 1011  python main.py -h
+ 1012  python
+ 1013  python main.py -h
+ 1014  python
+ 1015  python main.py -h
+ 1016  python main.py 2 5e-5 1 1
+ 1017  git init
+ 1018  git remote add origin git@github.com:username/new_repo
+ 1019  git push -u origin master
+ 1020  git remote add origin git@github.com:kimsunw/Binary_GRU
+ 1021  git status
+ 1022  git add
+ 1023  git add main.py
+ 1024  git commit -m "Test"
+ 1025  git push
+ 1026  git push -u origin master
+ 1027  ls
+ 1028  git reset
+ 1029  git
+ 1030  git diff
+ 1031  git status
+ 1032  git push
+ 1033  ls
+ 1034  git add .
+ 1035  git commit -m "First Commit"
+ 1036  git remote add origin echo 
+ 1037  git remote add origin
+ 1038  git remote add origin https://github.iu.edu/kimsunw/Binary_GRU.git
+ 1039  git push -u origin master
+ 1040  git remote add origin https://kimsunw@github.iu.edu/kimsunw/Binary_GRU.git
+ 1041  git remote set-url origin git@github.com:kimsunw/Binary_GRU.git
+ 1042  git push -u origin master
+ 1043  git remote set-url origin git@github.com:kimsunw/Binary_GRU.git
+ 1044  git remote rm origin
+ 1045  git status
+ 1046  ls
+ 1047  git add .
+ 1048  git add README.md
+ 1049  ls
+ 1050  echo "# Binary_GRU" >> README.md
+ 1051  git init
+ 1052  git add README.md
+ 1053  git commit -m "first commit"
+ 1054  git remote add origin https://kimsunw@github.iu.edu/kimsunw/Binary_GRU.git
+ 1055  git push -u origin master
+ 1056  vim .gitignore
+ 1057  git add .git
+ 1058  git add .gitignore
+ 1059  git reset
+ 1060  git add .gitignore
+ 1061  git commit -m "Added .gitignore"
+ 1062  gitpush
+ 1063  git push
+ 1064  git rm *.pyc
+ 1065  git rm __pycache__/
+ 1066  git rm -r __pycache__/
+ 1067  git commit -m "Removed __pycache__ and .pyc files"
+ 1068  git push
+ 1069  ls
+ 1070  python main.py -h
+ 1071  python main.py 3 5e-5 1 0
+ 1072  ls
+ 1073  git status
+ 1074  ls
+ 1075  nvidia-smi
+ 1076  python main.py -h
+ 1077  &python main 4 5e-5 1 0
+ 1078  python main 4 5e-5 1 0 &
+ 1079  python main.py 4 5e-5 1 0 &
+ 1080  ls
+ 1081  screen -ls
+ 1082  screen -X -S 32294 quit
+ 1083  screen -X -S 32226 quit
+ 1084  screen -X -S 32157 quit
+ 1085  screen -X -S 32099 quit
+ 1086  screen -ls
+ 1087  ls
+ 1088  cp ~/ssh_notebook.sh .
+ 1089  mv ssh_notebook.sh run_multi_gpu.sh
+ 1090  vim run_multi_gpu.sh 
+ 1091  ls
+ 1092  . run_multi_gpu.sh 
+ 1093  nvidia-smi
+ 1094  top
+ 1095  reset
+ 1096  nvidia-smi
+ 1097  top
+ 1098  nvidia-smi
+ 1099  . run_multi_gpu.sh 
+ 1100  nvidia-smi
+ 1101  top
+ 1102  nvidia-smi
+ 1103  . run_multi_gpu.sh 
+ 1104  nvidia-smi
+ 1105  . run_multi_gpu.sh 
+ 1106  nvidia-snmi
+ 1107  nvidia-smi
+ 1108  . run_multi_gpu.sh 
+ 1109  python
+ 1110  python main.py -h
+ 1111  . run_multi_gpu.sh 
+ 1112  ls
+ 1113  nvidia-smi
+ 1114  . run_multi_gpu.sh 
+ 1115  top
+ 1116  ll 
+ 1117  kill
+ 1118  ls
+ 1119  top
+ 1120  kill 750
+ 1121  kill 751
+ 1122  kill 750
+ 1123  top
+ 1124  kill 747
+ 1125  kill 748
+ 1126  kill 749
+ 1127  top
+ 1128  nvidia-smi
+ 1129  python main.py 2e-5 5 30 200 6 &
+ 1130* kill 126
+ 1131  python main.py 2e-5 5 30 200 6
+ 1132  . run_multi_gpu.sh 
+ 1133  top
+ 1134  q
+ 1135  top
+ 1136  kill 1623
+ 1137  qq
+ 1138  top
+ 1139  kill 1624
+ 1140  kill 1625
+ 1141  kill 1626
+ 1142  kill 16278
+ 1143  qq
+ 1144  top
+ 1145  kill 1627
+ 1146  . run_multi_gpu.sh 
+ 1147  nvidia-smi
+ 1148  . run_multi_gpu.sh 
+ 1149  nvidia-smi
+ 1150  kill 3299
+ 1151  kill 3300
+ 1152  . run_multi_gpu.sh 
+ 1153  nvidia-smi
+ 1154  kill 4374
+ 1155  top
+ 1156  kill 4375
+ 1157  . run_multi_gpu.sh 
+ 1158  nvidia-smi
+ 1159  . run_multi_gpu.sh 
+ 1160  python main.py 5e-5 5 150 200 3 &
+ 1161  kill 8005
+ 1162  python main.py 5e-5 5 150 200 3
+ 1163  . run_multi_gpu.sh 
+ 1164  qqqqtop
+ 1165  top
+ 1166  qqqqqtop
+ 1167  c
+ 1168  python main.py 5e-5 1 150 200 1
+ 1169  python main.py 5e-5 1 150 200 3
+ 1170  python main.py 5e-5 1 100 200 3
+ 1171  python main.py 5e-5 1 -1 200 3
+ 1172  python main.py 5e-5 1 100 200 3
+ 1173  python main.py 5e-5 1 90 200 3
+ 1174  . run_multi_gpu.sh 
+ 1175  nvidia-smi
+ 1176  . run_multi_gpu.sh 
+ 1177  nvidia-smi
+ 1178  rop
+ 1179  top
+ 1180  q
+ 1181  top
+ 1182  kill 22732
+ 1183  kill 22733
+ 1184  kill 22734
+ 1185  kill 22735
+ 1186  kill 22736
+ 1187  kill 22737
+ 1188  top
+ 1189  . run_multi_gpu.sh 
+ 1190  git status
+ 1191  git diff main.py 
+ 1192  python main.py 1e-5 1 30 20 3
+ 1193  python main.py 1e-5 1 30 1000 3 -d xlarge -n many
+ 1194  . run_multi_gpu.sh 
+ 1195  vim .gitignore 
+ 1196  vim run_multi_gpu.sh
+ 1197  nvidia-smi
+ 1198  vim run_multi_gpu.sh
+ 1199  . run_multi_gpu.sh 
+ 1200  git status
+ 1201  git diff .gitignore 
+ 1202  git add .
+ 1203  git commit -m "Fixed division by zero error in DataSets. Removed shell script"
+ 1204  git push
+ 1205  git status
+ 1206  vim .gitignore 
+ 1207  ls
+ 1208  vim .gitignore 
+ 1209  cp Sandbox.ipynb ..
+ 1210  cp run_multi_gpu.sh ..
+ 1211  git rm run_multi_gpu.sh 
+ 1212  git rm Sandbox.ipynb 
+ 1213  git commit -m "gitignore fixed to not include ipynb and sh"
+ 1214  git push
+ 1215  mv ../Sandbox.ipynb .
+ 1216  mv ../run_multi_gpu.sh .
+ 1217  ls
+ 1218  git status
+ 1219  git diff .gitignore 
+ 1220  git add .
+ 1221  git commit -m "gitignore not added previously, added now"
+ 1222  git push
+ 1223  git rm .ipynb_checkpoints/
+ 1224  git rm -r .ipynb_checkpoints/
+ 1225  git commit -m ".pynb checkpoint folder rm"
+ 1226  git push
+ 1227  git status
+ 1228  git add main.py 
+ 1229  git commit -m "Changed result saved file names"
+ 1230  git push
+ 1231  . run_multi_gpu.sh 
+ 1232  nvidia-smi
+ 1233  git status
+ 1234  git add .
+ 1235  git commit -m "Names of saved files changed to be more descriptive"
+ 1236  git push
+ 1237  git status
+ 1238  git diff Models.py 
+ 1239  git commit -m "Changed fn name"
+ 1240  git push
+ 1241  ls
+ 1242  . run_multi_gpu.sh 
+ 1243  reset
+ 1244  git status
+ 1245  git add .
+ 1246  git commit -m "Save and restore feature added"
+ 1247  git push
+ 1248  nvidia-smi
+ 1249  python main.py -h
+ 1250  parser.add_argument("-t", "--restore_model", type=str, default=None,
+ 1251  python main.py 1e-6 10 30 7
+ 1252  python main.py 1e-6 10 30 7 7
+ 1253  python
+ 1254  ls
+ 1255  pip install cPickle
+ 1256  python main.py 1e-6 10 30 7 7
+ 1257  python main.py -h
+ 1258  python main.py 1e-6 10 30 7 7 -k data_s_f.pkl
+ 1259  python main.py -h
+ 1260  python main.py 1e-6 10 30 7 7 -k data_s_f.pkl
+ 1261  python main.py 1e-6 5 30 7 7 -k data_s_f.pkl
+ 1262* python main.py 
+ 1263  python main.py 1e-6 5 30 7 7 -k data_s_f.pkl -t Saved_Models/05.28(16:57)_lr(1e-06)_batchsz(5)_bptt(30)_data(small)_noise(5)_7
+ 1264  python main.py 1e-6 5 30 7 7 -k data_s_f.pkl -t 'Saved_Models/05.28(16:57)_lr(1e-06)_batchsz(5)_bptt(30)_data(small)_noise(5)_7'
+ 1265  python main.py 5e-5 5 30 7 7 -k data_s_f.pkl
+ 1266  python main.py 5e-5 5 30 7 7 -k data_s_f.pkl -t 'Saved_Models/05.28(17:02)_lr(5e-05)_batchsz(5)_bptt(30)_data(small)_noise(5)_7'
+ 1267  python main.py 5e-5 5 30 7 7 -k data_s_f.pkl -t 'Saved_Models/05.28(17:02)_lr(5e-05)_batchsz(5)_bptt(30)_data(small)_noise(5)_14'
+ 1268  python main.py 5e-5 5 30 2 7 -k data_s_f.pkl -t 'Saved_Models/05.28(17:02)_lr(5e-05)_batchsz(5)_bptt(30)_data(small)_noise(5)_21'
+ 1269  python main.py 5e-5 5 30 2 7 -k data_s_f.pkl
+ 1270  python main.py 5e-5 5 30 2 7 -k data_s_f.pkl -t 'Saved_Models/05.28(17:49)_lr(5e-05)_batchsz(5)_bptt(30)_data(small)_noise(5)_2'
+ 1271  python main.py 5e-5 5 30 2 7 -k data_s_f.pkl
+ 1272  . run_multi_gpu.sh 
+ 1273  top
+ 1274  nvidia-smi
+ 1275  top
+ 1276  kill 3331
+ 1277  kill 3332
+ 1278  kill 3333
+ 1279  kill 3334
+ 1280  kill 3335
+ 1281  . run_multi_gpu.sh 
+ 1282  nvidia-smi
+ 1283  python main.py 5e-5 5 30 2 7 -k data_s_f.pkl
+ 1284  python main.py 5e-5 5 30 4 7 -k data_s_f.pkl -t '05.29(12:44)_lr(5e-05)_batchsz(5)_bptt(30)_data(small)_noise(5)_2'
+ 1285  python main.py 5e-5 5 30 4 7 -k data_s_f.pkl -o '05.29(12:44)_lr(5e-05)_batchsz(5)_bptt(30)_data(small)_noise(5)_2'
+ 1286  python main.py 5e-5 5 30 2 7 -k data_s_f.pkl
+ 1287  python main.py 5e-5 5 30 4 7 -k data_s_f.pkl -o '05.29(12:44)_lr(5e-05)_batchsz(5)_bptt(30)_data(small)_noise(5)_2'
+ 1288  git status
+ 1289  vim .gitignore 
+ 1290  git status
+ 1291  git diff Quantizations.py 
+ 1292  git status
+ 1293  git add .gitignore 
+ 1294  git diff Data
+ 1295  git diff DataSets.py 
+ 1296  git add DataSets.py 
+ 1297  git diff Models.py 
+ 1298  git add Models.py 
+ 1299  git add main.py 
+ 1300  git diff Quantizations.py 
+ 1301  git status
+ 1302  git diff Quantizations.py 
+ 1303  git add Quantizations.py 
+ 1304  git status
+ 1305  git add .
+ 1306  git status
+ 1307  git commit -m "Saving and restoring added"
+ 1308  git push
+ 1309  . run_multi_gpu.sh 
+ 1310  top
+ 1311  kill 8769
+ 1312  kill 8770
+ 1313  kill 8771
+ 1314  kill 8772
+ 1315  kill 8773
+ 1316  top
+ 1317  kill 8370
+ 1318  kill 8371
+ 1319  kill 8372
+ 1320  kill 8373
+ 1321  top
+ 1322  python main.py 5e-5 10 30 5 3 -d small -n few
+ 1323  python main.py 5e-5 5 30 5 3 -d small -n few
+ 1324  python main.py 1e-6 10 30 100 3 -d xlarge -n many -k data_xl_m.pkl
+ 1325  nvidia-smi
+ 1326  . run_multi_gpu.sh 
+ 1327  nvidia-smi
+ 1328  kill 9805
+ 1329  kill 9806
+ 1330  kill 9807
+ 1331  kill 9808
+ 1332  kill 9809
+ 1333  nvidia-smi
+ 1334  python main.py 5e-5 5 30 2 7 -k data_s_f.pkl
+ 1335  python main.py 5e-5 5 30 3 6 -k data_s_f.pkl -o '05.29(18:35)_lr(5e-05)_batchsz(5)_bptt(30)_data(small)_noise(5)_epoch(2)_SNR(2.7073)'
+ 1336  python main.py 5e-5 5 30 2 7 -k data_s_f.pkl
+ 1337  python main.py 5e-5 5 30 6 7 -k data_s_f.pkl -o '05.29(19:16)_lr(5e-05)_batchsz(5)_bptt(30)_data(small)_noise(5)_epoch(2)_SNR(2.8007)'
+ 1338  git status
+ 1339   git add .
+ 1340  git commit -m "Saving and Restoring Corrected"
+ 1341  git push
+ 1342  nvidia-smi
+ 1343  . run_multi_gpu.sh 
+ 1344  python main.py -h
+ 1345  python main.py 1e-6 10 30 13 7 -k data_xl_m.pkl &
+ 1346  kill 17470
+ 1347  python main.py 1e-6 10 30 13 7 -k data_xl_m.pkl -d xlarge -n many -b None&
+ 1348  python main.py 1e-6 10 30 13 7 -k data_xl_m.pkl -d xlarge -n many &
+ 1349  python main.py 1e-6 10 30 13 7 -k data_xl_m.pkl -d xlarge -n many -b 4 &
+ 1350  python main.py 5e-6 10 30 13 7 -k data_xl_m.pkl -d xlarge -n many &
+ 1351  python main.py 1e-5 10 30 13 7 -k data_xl_m.pkl -d xlarge -n many &
+ 1352  kill 17733
+ 1353  kill 18053
+ 1354  kill 17733
+ 1355  nvidia-smi
+ 1356  python main.py 1e-5 10 30 13 6 -k data_xl_m.pkl -d xlarge -n many &
+ 1357  python main.py 5e-6 10 30 13 5 -k data_xl_m.pkl -d xlarge -n many &
+ 1358  python main.py 5e-6 10 30 13 4 -k data_xl_m.pkl -d xlarge -n many &
+ 1359  python main.py 1e-6 10 30 13 3 -k data_xl_m.pkl -d xlarge -n many &
+ 1360  python main.py 1e-5 10 30 13 2 -k data_xl_m.pkl -d xlarge -n many -b 4 &
+ 1361  kill 18740
+ 1362  kill 18696
+ 1363  nvidia-smi
+ 1364  python main.py 1e-5 10 30 13 3 -k data_xl_m.pkl -d xlarge -n many -b 4 &
+ 1365  python main.py 1e-6 10 30 13 4 -k data_xl_m.pkl -d xlarge -n many -b 4
+ 1366  python main.py 1e-6 10 30 13 4 -k data_xl_m.pkl -d xlarge -n many -b 4 &
+ 1367  nvidia-smi
+ 1368  kill 18010
+ 1369  kill 17690
+ 1370  kill 18341
+ 1371  kill 18431
+ 1372  kill19164
+ 1373  nvidia-smi
+ 1374  kill 19381
+ 1375  kill 19164
+ 1376  nvidia-smi
+ 1377  . run_multi_gpu.sh 
+ 1378  nvidia-smi
+ 1379  . run_multi_gpu.sh 
+ 1380  nvidia-smi
+ 1381  top
+ 1382  kill 24472
+ 1383  kill 24474
+ 1384  kill 24475
+ 1385  kill 24476
+ 1386  kill 24478
+ 1387  top
+ 1388  kill 24473
+ 1389  kill 24478
+ 1390  top
+ 1391  kill 24477
+ 1392  kill 24482
+ 1393  top
+ 1394  kill 24480
+ 1395  kill 24481
+ 1396  kill 24482
+ 1397  top
+ 1398  kill 24479
+ 1399  top
+ 1400  kill 24483
+ 1401  top
+ 1402  . run_multi_gpu.sh 
+ 1403  nvidia-smi
+ 1404  ls
+ 1405  git status
+ 1406  git diff DataSets.py 
+ 1407  git diff main.py 
+ 1408  git diff Models.py 
+ 1409  git add .
+ 1410  git commit -m "Unquantized option added"
+ 1411  git push
+ 1412  nvidia-smi
+ 1413  . run_multi_gpu.sh 
+ 1414  nvidia-smi
+ 1415  . run_multi_gpu.sh 
+ 1416  nvidia-smi
+ 1417  kill 33683
+ 1418  kill 33684
+ 1419  kill 33685
+ 1420  kill 33686
+ 1421  kill 33687
+ 1422  kill 33688
+ 1423  kill 3368
+ 1424  kill 33689
+ 1425  nvidia-smi
+ 1426  kill 33690
+ 1427  kill 33691
+ 1428  kill 33692
+ 1429  . run_multi_gpu.sh 
+ 1430  nvidia-smi
+ 1431  . run_multi_gpu.sh 
+ 1432  ad
+ 1433  nvidia-smi
+ 1434  . run_multi_gpu.sh 
+ 1435  nvidia-smi
+ 1436  kill 13781'
+
+ 1437  kill 13781'
+
+ 1438  kill 13781
+ 1439  kill 13780
+ 1440  kill 13779
+ 1441  nvidia-smi
+ 1442  kill 13783
+ 1443  kill 13778
+ 1444  kill 13782
+ 1445  kill 13777
+ 1446  nvidia-smi
+ 1447  . run_multi_gpu.sh 
+ 1448  nvidia-smi
+ 1449  top
+ 1450  kill 15915
+ 1451  nvidia-smi
+ 1452  python main.py 5e-5 5 90 3 5 -d large -n few -k data_l_f.pkl -b 4 -v
+ 1453  python main.py 5e-5 5 90 3 5 -d large -n few -k data_l_f.pkl -b 4 -e -v
+ 1454  python main.py 5e-5 5 90 4 5 -d large -n few -k data_l_f.pkl -b 4 -e -v
+ 1455  python main.py 5e-5 5 90 1 5 -d large -n few -k data_l_f.pkl -b 4 -e -v
+ 1456  nvidia-smi
+ 1457  . run_multi_gpu.sh 
+ 1458  nvidia-smi
+ 1459  . run_multi_gpu.sh 
+ 1460  history
+ 1461  history > junk

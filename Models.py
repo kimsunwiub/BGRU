@@ -7,7 +7,7 @@ from tqdm import tqdm
 import numpy as np
 import re
 
-def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None):
+def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None, beta1=None, beta2=None):
     
     def mod_n_epochs(sp, n_epochs):
         prev_n_epochs = int(re.split(r'[()]', sp)[1])
@@ -49,7 +49,7 @@ def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None):
         mod_split = 'pretrain'.join(prev_split).split('_')
         
     if is_first:
-        mod_split.append('lr({})_epoch({})'.format(lr, n_epochs))
+        mod_split.append('lr({})_betas({},{})_epoch({})'.format(lr, beta1, beta2, n_epochs))
         if snr: 
             mod_split.append('SNR({:.4f})'.format(snr))
         
@@ -135,6 +135,7 @@ class GRU_Net(object):
             initializer = tf.contrib.layers.xavier_initializer(uniform=False)
             W_out = tf.Variable(initializer([self.state_sz, self.feat]))
             b_out = tf.Variable(initializer([self.feat]))
+            init_state = (tf.Variable(initializer([self.batch_sz, self.state_sz])), tf.Variable(initializer([self.batch_sz, self.state_sz])))
             
         else:    
             bW_out = tf.get_variable("W_out", [self.state_sz, self.feat])
@@ -164,16 +165,13 @@ class GRU_Net(object):
             tanh_cb1 = math_ops.tanh(cb1)
             
             cells = []
-            # <TODO> Feed ini_0 and ini_1 to BGRUCell. Do after pretrain > 12
             cell = BinaryGRUCell(self.state_sz, tanh_gk0, tanh_gb0, tanh_ck0, tanh_cb0); cells.append(cell)
             cell = BinaryGRUCell(self.state_sz, tanh_gk1, tanh_gb1, tanh_ck1, tanh_cb1); cells.append(cell)
             multicell = tf.contrib.rnn.MultiRNNCell(cells)
             W_out = math_ops.tanh(bW_out)
             b_out = math_ops.tanh(bb_out)
+            init_state = (ini_0, ini_1)
         
-        # <TODO> Test out different init states like 
-        # https://r2rt.com/non-zero-initial-states-for-recurrent-neural-networks.html
-        init_state = (tf.Variable(initializer([self.batch_sz, self.state_sz])), tf.Variable(initializer([self.batch_sz, self.state_sz])))
         states_series, current_state = tf.nn.dynamic_rnn(multicell, self.inputs, initial_state=init_state, dtype=tf.float32)
         outputs = tf.reshape(states_series,[-1,self.state_sz])
 
@@ -181,19 +179,19 @@ class GRU_Net(object):
             self.logits = tf.sigmoid(tf.matmul(outputs, tf.tanh(W_out)) + tf.tanh(b_out))
             self.logits = tf.reshape(self.logits, [self.batch_sz, -1, self.feat])
         else:
-            def binary_with_sigmoid_grad(x):
+            def binary_sigmoid_grad(x):
                 g = tf.get_default_graph()
                 with g.gradient_override_map({"Sign":"SigmoidGrads"}):
                     return 0.5 * (tf.sign(x)+1)
             
-            def bipolar_binarize_with_tanh_grad(x):
+            def binary_tanh_grad(x):
                 # <Change name>
                 g = tf.get_default_graph()
                 with g.gradient_override_map({"Sign":"TanhGrads"}):
                     return tf.sign(x)
             
-            self.logits = tf.sigmoid(tf.matmul(outputs, 
-                bipolar_binarize_with_tanh_grad(W_out)) + bipolar_binarize_with_tanh_grad(b_out))
+            self.logits = binary_sigmoid_grad(tf.matmul(outputs, 
+                binary_tanh_grad(W_out)) + binary_tanh_grad(b_out))
             self.logits = tf.reshape(self.logits, [self.batch_sz, -1, self.feat])
         
     def build_loss(self):
@@ -227,14 +225,18 @@ class GRU_Net(object):
                 
                 # Run model w.r.t. lookback length
                 local_n = X[0].shape[0]
-                if self.bptt == -1: local_bptt = local_n
+                if self.bptt == -1: 
+                    local_bptt = local_n
+                    if local_bptt > 235: # max for large many
+                        local_bptt = 235
                 else: local_bptt = self.bptt
                 assert (local_bptt <= local_n)
                 
                 feed_sz = local_n//local_bptt
                 feed_losses = empty_array(feed_sz)
                 
-                tf.logging.debug('BPTT({}) caused signal({}) to be truncated by {}'.format(local_bptt, local_n, local_n % local_bptt))
+                if local_n % local_bptt > 0:
+                    tf.logging.debug('BPTT({}) caused signal({}) to be truncated by {}'.format(local_bptt, local_n, local_n % local_bptt))
                 
                 for j in range(feed_sz):
                     start_idx = j*local_bptt
@@ -324,7 +326,8 @@ class GRU_Net(object):
                     
                     pbar.update(1)
             
-            self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_pretrain, self.va_snrs.max(), self.learning_rate)
+            self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_pretrain, self.va_snrs.max(), self.learning_rate,
+                                      self.beta1, self.beta2)
             # Save the model
             saver.save(sess, self.model_nm)
             tf.logging.info('Saving parameters to {}'.format(self.model_nm))
