@@ -24,6 +24,15 @@ class SourceSeparation_DataSet(object):
             # <TODO> Directory Input
             return
         
+        def get_Profs_speakers():
+            # Speakers used for Professor's Notebook "Bitwise GRU - 1R"
+            fullpath_train = ['Data/train/dr2/fcaj0', 'Data/train/dr1/mrcg0', 'Data/train/dr2/mjmd0', 
+                              'Data/train/dr3/fmjf0', 'Data/train/dr4/fpaf0', 'Data/train/dr7/mclk0', 
+                              'Data/train/dr7/mjai0', 'Data/train/dr2/fsrh0', 'Data/train/dr2/feac0', 
+                              'Data/train/dr6/mcae0', 'Data/train/dr3/mreh1', 'Data/train/dr2/mrjt0'] 
+            fullpath_test = ['Data/test/dr2/mcem0', 'Data/test/dr4/mljb0', 'Data/test/dr5/mrpp0', 'Data/test/dr7/fdhc0']
+            return fullpath_train, fullpath_test
+        
         def get_dr1_speakers():
             path_train = 'Data/train/dr1' 
             path_test = 'Data/test/dr1' 
@@ -97,7 +106,7 @@ class SourceSeparation_DataSet(object):
                 return {'M':M_array, 'y':IBM_array}
             return {'S':S_array, 'M':M_array, 'y':IBM_array}
         
-        speakers_train, speakers_test = get_dr1_speakers()
+        speakers_train, speakers_test = get_Profs_speakers() # <TODO> So only XL and M option technically for now
         signals_noise = get_noises()
         
         signals_train = get_signals_from_speakers(speakers_train)
