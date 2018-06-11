@@ -7,6 +7,7 @@ import logging
 import os 
 import re
 
+
 from Models import GRU_Net
 from DataSets import SourceSeparation_DataSet
 
@@ -27,7 +28,7 @@ def parse_arguments():
     parser.add_argument("-z", "--beta1", type=float, default=0.9,
                         help="Beta1 value for AdamOptimizer (Default: 0.9)")
     parser.add_argument("-y", "--beta2", type=float, default=0.999,
-                        help="Beta2 value for AdamOptimizer")
+                        help="Beta2 value for AdamOptimizer (Default: 0.999)")
     
     parser.add_argument("-f", "--feat", type=int, default=513,
                         help="Number of features (Default: 513)")
@@ -53,13 +54,15 @@ def parse_arguments():
                         help="Size of data set (Default: small(2)). [Options: small(2), medium(4), large(8), xlarge(12)]")
     parser.add_argument("-n", "--n_noise", type=str, default='few',
                         help="Number of noise signals (Default: few(5)) [Options: few(5), many(10)]")
+    parser.add_argument("-g", "--gain", type=float, default=1.0,
+                        help="GAIN to influence initialization stddev for the first layer of weights")
     
     parser.add_argument("-v", "--verbose",  action='store_true',
                         help = "Print SNR outputs from each epoch (Default: False)")
 
     return parser.parse_args()
 
-def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None, beta1=None, beta2=None):
+def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None, beta1=None, beta2=None, gain=None):
     
     def mod_n_epochs(sp, n_epochs):
         prev_n_epochs = int(re.split(r'[()]', sp)[1])
@@ -101,7 +104,7 @@ def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None, beta1=None, be
         mod_split = 'pretrain'.join(prev_split).split('_')
         
     if is_first:
-        mod_split.append('lr({})_betas({},{})_epoch({})'.format(lr, beta1, beta2, n_epochs))
+        mod_split.append('lr({})_betas({},{})_gain({})_epoch({})'.format(lr, beta1, beta2, gain, n_epochs))
         if snr: 
             mod_split.append('SNR({:.4f})'.format(snr))
         
@@ -146,7 +149,7 @@ def main():
     if args.model_nm:
         is_restore = True
         run_info = mod_name(args.model_nm, args.n_epochs, args.is_pretrain, 1, args.learning_rate,
-                            args.beta1, args.beta2)
+                            args.beta1, args.beta2, args.gain)
         args.model_nm = '{}/{}'.format(args.dir_models, args.model_nm)
     else:
         run_info = '{}_pretrain({})_batchsz({})_bptt({})_data({})_noise({})_bits({})'.format(
@@ -167,15 +170,17 @@ def main():
                     is_restore,
                     args.model_nm,
                     args.n_bits,
-                    args.is_pretrain)
+                    args.is_pretrain,
+                    args.gain)
     model.train(data)
 
     if is_restore:
         args.n_epochs = 0
     if args.is_pretrain:
-        plot_name = '{}/{}'.format(args.dir_results, mod_name(run_info, args.n_epochs, args.is_pretrain, model.va_snrs.max(), args.learning_rate, args.beta1, args.beta2))
+        plot_name = '{}/{}'.format(args.dir_results, mod_name(run_info, args.n_epochs, args.is_pretrain, model.va_snrs.max(), args.learning_rate, args.beta1, args.beta2, args.gain))
     else:
         plot_name = '{}/{}'.format(args.dir_results, mod_name(run_info, args.n_epochs, args.is_pretrain, model.va_snrs.max()))
+        # Do I need this?
     plot_results(model, plot_name)
     
 if __name__ == "__main__":

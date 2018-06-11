@@ -1,4 +1,5 @@
 from GRU_Modifications import TanhGRUCell, BinaryGRUCell
+from Initializers import my_xavier_initializer
 from tensorflow.python.ops import math_ops
 from librosa.core import istft as istft
 import _pickle as pickle
@@ -7,7 +8,7 @@ from tqdm import tqdm
 import numpy as np
 import re
 
-def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None, beta1=None, beta2=None):
+def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None, beta1=None, beta2=None, gain=None):
     
     def mod_n_epochs(sp, n_epochs):
         prev_n_epochs = int(re.split(r'[()]', sp)[1])
@@ -49,7 +50,7 @@ def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None, beta1=None, be
         mod_split = 'pretrain'.join(prev_split).split('_')
         
     if is_first:
-        mod_split.append('lr({})_betas({},{})_epoch({})'.format(lr, beta1, beta2, n_epochs))
+        mod_split.append('lr({})_betas({},{})_gain({})_epoch({})'.format(lr, beta1, beta2, gain, n_epochs))
         if snr: 
             mod_split.append('SNR({:.4f})'.format(snr))
         
@@ -66,7 +67,7 @@ def empty_array(size):
 
 def saver_dict(trainable_variables):
     names = ['W_out', 'b_out',
-        'init_0', 'init_1',
+        #'init_0', 'init_1',
         'gk0','gb0', 'ck0', 'cb0',
         'gk1','gb1', 'ck1', 'cb1']
     saver_dict = {}
@@ -88,7 +89,7 @@ def compute_SNR(S, S_hat):
     
 class GRU_Net(object):
 
-    def __init__(self, perc, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, feat, n_layers, state_sz, verbose, is_restore, model_nm, n_bits, is_pretrain):
+    def __init__(self, perc, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, feat, n_layers, state_sz, verbose, is_restore, model_nm, n_bits, is_pretrain, gain):
         """
         feat: Number of features / classes
         """
@@ -106,6 +107,7 @@ class GRU_Net(object):
         self.is_restore = is_restore
         self.n_bits = n_bits
         self.is_pretrain = is_pretrain
+        self.gain = gain
         
         if verbose: tf.logging.set_verbosity(tf.logging.DEBUG)
         else: tf.logging.set_verbosity(tf.logging.INFO)
@@ -129,13 +131,16 @@ class GRU_Net(object):
     def build_GRU(self):
         
         if self.is_pretrain:
-            multicell = tf.contrib.rnn.MultiRNNCell(
-                [TanhGRUCell(self.state_sz) for _ in range(self.n_layers)]
-                )
+            cells = []
+            my_weight_initializer=my_xavier_initializer(uniform=False, gain=self.gain)
+            weight_initializer=tf.contrib.layers.xavier_initializer(uniform=False)
+            cell = TanhGRUCell(self.state_sz, kernel_initializer=my_weight_initializer); cells.append(cell)
+            cell = TanhGRUCell(self.state_sz, kernel_initializer=weight_initializer); cells.append(cell)
+            multicell = tf.contrib.rnn.MultiRNNCell(cells)
             initializer = tf.contrib.layers.xavier_initializer(uniform=False)
             W_out = tf.Variable(initializer([self.state_sz, self.feat]))
             b_out = tf.Variable(initializer([self.feat]))
-            init_state = (tf.Variable(initializer([self.batch_sz, self.state_sz])), tf.Variable(initializer([self.batch_sz, self.state_sz])))
+            #init_state = (tf.Variable(initializer([self.batch_sz, self.state_sz])), tf.Variable(initializer([self.batch_sz, self.state_sz])))
             
         else:    
             bW_out = tf.get_variable("W_out", [self.state_sz, self.feat])
@@ -172,7 +177,8 @@ class GRU_Net(object):
             b_out = math_ops.tanh(bb_out)
             init_state = (ini_0, ini_1)
         
-        states_series, current_state = tf.nn.dynamic_rnn(multicell, self.inputs, initial_state=init_state, dtype=tf.float32)
+        #states_series, current_state = tf.nn.dynamic_rnn(multicell, self.inputs, initial_state=init_state, dtype=tf.float32)
+        states_series, current_state = tf.nn.dynamic_rnn(multicell, self.inputs, dtype=tf.float32)
         outputs = tf.reshape(states_series,[-1,self.state_sz])
 
         if self.is_pretrain:
@@ -234,9 +240,8 @@ class GRU_Net(object):
                 
                 feed_sz = local_n//local_bptt
                 feed_losses = empty_array(feed_sz)
-                
-                if local_n % local_bptt > 0:
-                    tf.logging.debug('BPTT({}) caused signal({}) to be truncated by {}'.format(local_bptt, local_n, local_n % local_bptt))
+#                 if local_n % local_bptt > 0:
+#                     tf.logging.debug('BPTT({}) caused signal({}) to be truncated by {}'.format(local_bptt, local_n, local_n % local_bptt))
                 
                 for j in range(feed_sz):
                     start_idx = j*local_bptt
@@ -327,7 +332,7 @@ class GRU_Net(object):
                     pbar.update(1)
             
             self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_pretrain, self.va_snrs.max(), self.learning_rate,
-                                      self.beta1, self.beta2)
+                                      self.beta1, self.beta2, self.gain)
             # Save the model
             saver.save(sess, self.model_nm)
             tf.logging.info('Saving parameters to {}'.format(self.model_nm))
