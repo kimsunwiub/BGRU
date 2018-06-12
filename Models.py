@@ -8,88 +8,11 @@ from tqdm import tqdm
 import numpy as np
 import re
 
-def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None, beta1=None, beta2=None, gain=None):
-    
-    def mod_n_epochs(sp, n_epochs):
-        prev_n_epochs = int(re.split(r'[()]', sp)[1])
-        sp = 'epoch({})'.format(prev_n_epochs + n_epochs)
-        return sp
-    
-    def mod_sp(sp, n_epochs, snr):
-        if 'epoch' in sp:
-            sp = mod_n_epochs(sp, n_epochs)
-        elif snr and 'SNR' in sp:
-            sp = 'SNR({:.4f})'.format(snr)
-        return sp
-    
-    mod_split = []
-    is_first = True
-    
-    if is_pretrain:
-        for sp in prev_name.split('_'):
-            if 'epoch' in sp:
-                is_first = False
-            sp = mod_sp(sp, n_epochs, snr)
-            mod_split.append(sp)
-            
-    else:
-        prev_split = prev_name.split('pretrain')
-        
-        if len(prev_split) == 2:
-            prev_split[-1] += '_'
-            prev_split.append('(False)')
-        else:
-            is_first = False
-            temp = []
-            for sp in prev_split[-1].split('_'):
-                sp = mod_sp(sp, n_epochs, snr)
-                temp.append(sp)
-                
-            prev_split[-1] = '_'.join(temp)
-
-        mod_split = 'pretrain'.join(prev_split).split('_')
-        
-    if is_first:
-        mod_split.append('lr({})_betas({},{})_gain({})_epoch({})'.format(lr, beta1, beta2, gain, n_epochs))
-        if snr: 
-            mod_split.append('SNR({:.4f})'.format(snr))
-        
-    return '_'.join(mod_split)
-
-def empty_array(size):
-    """
-    Initialize an array of 'size' number of nans
-    
-    Params:
-        size: Size of the array
-    """
-    return np.full(size, np.nan)
-
-def saver_dict(trainable_variables):
-    names = ['W_out', 'b_out',
-        #'init_0', 'init_1',
-        'gk0','gb0', 'ck0', 'cb0',
-        'gk1','gb1', 'ck1', 'cb1']
-    saver_dict = {}
-    for n,t in zip(names, trainable_variables):
-        saver_dict[n] = t
-    return saver_dict
-
-def compute_SNR(S, S_hat):
-    """
-    Helper function to retrieve SNR
-    
-    Params:
-        S: orignal source
-        S_hat: recovered
-    """
-    numerator = np.sum(np.power(S,2), axis=1)
-    denominator = np.sum(np.power(S - S_hat, 2), axis=1)
-    return np.mean(10*np.log10(numerator/denominator))
+from utils import *
     
 class GRU_Net(object):
 
-    def __init__(self, perc, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, feat, n_layers, state_sz, verbose, is_restore, model_nm, n_bits, is_pretrain, gain):
+    def __init__(self, perc, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, feat, n_layers, state_sz, verbose, is_restore, model_nm, n_bits, is_pretrain, gain, clip_val):
         """
         feat: Number of features / classes
         """
@@ -108,6 +31,7 @@ class GRU_Net(object):
         self.n_bits = n_bits
         self.is_pretrain = is_pretrain
         self.gain = gain
+        self.clip_val = clip_val
         
         if verbose: tf.logging.set_verbosity(tf.logging.DEBUG)
         else: tf.logging.set_verbosity(tf.logging.INFO)
@@ -135,7 +59,7 @@ class GRU_Net(object):
             my_weight_initializer=my_xavier_initializer(uniform=False, gain=self.gain)
             weight_initializer=tf.contrib.layers.xavier_initializer(uniform=False)
             cell = TanhGRUCell(self.state_sz, kernel_initializer=my_weight_initializer); cells.append(cell)
-            cell = TanhGRUCell(self.state_sz, kernel_initializer=weight_initializer); cells.append(cell)
+            cell = TanhGRUCell(self.state_sz, kernel_initializer=weight_initializer); cells.append(cell)       
             multicell = tf.contrib.rnn.MultiRNNCell(cells)
             initializer = tf.contrib.layers.xavier_initializer(uniform=False)
             W_out = tf.Variable(initializer([self.state_sz, self.feat]))
@@ -206,7 +130,12 @@ class GRU_Net(object):
         self.loss = tf.reduce_mean(tf.square(tf.subtract(logits_1d, labels)))
         
     def build_optimizer(self):
-        self.op = tf.train.AdamOptimizer(learning_rate=self.learning_rate, beta1=self.beta1, beta2=self.beta2).minimize(self.loss)
+        opt = tf.train.AdamOptimizer(learning_rate=self.learning_rate, beta1=self.beta1, beta2=self.beta2)
+        # self.op = opt.minimize(self.loss)
+        
+        gvs = opt.compute_gradients(self.loss)
+        capped_gvs = [(tf.clip_by_value(grad, -self.clip_val, self.clip_val), var) for grad, var in gvs]
+        self.op = opt.apply_gradients(capped_gvs)
     
     def train(self, data):
         
