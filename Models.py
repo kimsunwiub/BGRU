@@ -12,26 +12,25 @@ from utils import *
     
 class GRU_Net(object):
 
-    def __init__(self, perc, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, feat, n_layers, state_sz, verbose, is_restore, model_nm, n_bits, is_pretrain, gain, clip_val):
-        """
-        feat: Number of features / classes
-        """
-        self.perc = perc
+    def __init__(self, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, verbose, is_restore, model_nm, n_bits, is_pretrain, gain, clip_val):
+        
+        self.feat = 513
+        self.n_layers = 2
+        self.state_sz = 1024
+        
         self.bptt = bptt
-        self.feat = feat
-        self.n_layers = n_layers
-        self.n_epochs = n_epochs
-        self.batch_sz = batch_sz
-        self.state_sz = state_sz
-        self.learning_rate = learning_rate
+        self.gain = gain
         self.beta1 = beta1
         self.beta2 = beta2
-        self.model_nm = model_nm
-        self.is_restore = is_restore
         self.n_bits = n_bits
-        self.is_pretrain = is_pretrain
-        self.gain = gain
         self.clip_val = clip_val
+        self.model_nm = model_nm
+        self.n_epochs = n_epochs
+        self.batch_sz = batch_sz
+        self.learning_rate = learning_rate
+        
+        self.is_restore = is_restore
+        self.is_pretrain = is_pretrain
         
         if verbose: tf.logging.set_verbosity(tf.logging.DEBUG)
         else: tf.logging.set_verbosity(tf.logging.INFO)
