@@ -5,7 +5,6 @@ from utils import *
 from argparse import ArgumentParser
 from datetime import datetime
 import _pickle as pickle
-import logging
 import os 
 
 def parse_arguments():
@@ -21,8 +20,6 @@ def parse_arguments():
                         help="Number of epochs")
     parser.add_argument("gpu_id", type=int,
                         help="GPU ID")
-    parser.add_argument("pickled_data", type=str,
-                        help="Pretrained data to load")
     
     parser.add_argument("-b", "--n_bits", type=int, default=None,
                         help="Number of bits used for quantization (Default: None)")
@@ -46,9 +43,21 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
-    logger = logging.getLogger(); logger.setLevel(logging.INFO)
-    with open(args.pickled_data, 'rb') as f: data = pickle.load(f)
-    logger.info('Restoring data from {}'.format(args.pickled_data))
+
+    """
+    with open ('padded_data_tr.pkl', 'rb') as f: train = pickle.load(f)
+    with open ('padded_data_tt.pkl', 'rb') as f: test = pickle.load(f)
+
+    class feed_data(object):
+        def __init__(self, train, test):
+            self.train = train
+            self.test = test
+            self.n_noise = 10
+
+    data = feed_data(train, test)
+    """
+    with open('data_xl_m.pkl', 'rb') as f: data = pickle.load(f) 
+        
     os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"]=str(args.gpu_id)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 

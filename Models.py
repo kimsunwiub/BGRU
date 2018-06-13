@@ -42,14 +42,19 @@ class GRU_Net(object):
         self.build_optimizer()
     
     def build_inputs(self):
+        
+#        if self.bptt == -1:
+#            self.bptt = 235
+        
         if self.n_bits:
             self.inputs = tf.placeholder(tf.float32, 
-                            [None, None, self.feat * self.n_bits]) 
+                            [None,None,self.feat * self.n_bits]) 
         else:
             self.inputs = tf.placeholder(tf.float32, 
-                            [None, None, self.feat]) 
+                            [None,None, self.feat]) 
         self.targets = tf.placeholder(tf.float32, 
-                        [None, None, self.feat])
+#                        [self.batch_sz, self.bptt, self.feat])
+                        [None,None, self.feat])
 
     def build_GRU(self):
         
@@ -57,6 +62,19 @@ class GRU_Net(object):
             cells = []
             my_weight_initializer=my_xavier_initializer(uniform=False, gain=self.gain)
             weight_initializer=tf.contrib.layers.xavier_initializer(uniform=False)
+
+            # <HERE>
+            # <HERE>
+            # <HERE>
+
+            #cell = 
+
+            # <HERE>
+            # <HERE>
+            # <HERE>
+
+
+
             cell = TanhGRUCell(self.state_sz, kernel_initializer=my_weight_initializer); cells.append(cell)
             cell = TanhGRUCell(self.state_sz, kernel_initializer=weight_initializer); cells.append(cell)       
             multicell = tf.contrib.rnn.MultiRNNCell(cells)
@@ -69,8 +87,8 @@ class GRU_Net(object):
             bW_out = tf.get_variable("W_out", [self.state_sz, self.feat])
             bb_out = tf.get_variable("b_out", [self.feat])
             
-            ini_0 = tf.get_variable("ini_0", [self.batch_sz, self.state_sz])
-            ini_1 = tf.get_variable("ini_1", [self.batch_sz, self.state_sz])
+            # ini_0 = tf.get_variable("ini_0", [self.batch_sz, self.state_sz])
+            # ini_1 = tf.get_variable("ini_1", [self.batch_sz, self.state_sz])
             
             gk0 = tf.get_variable("gk0", [self.feat*self.n_bits+self.state_sz, self.state_sz*2])
             gb0 = tf.get_variable("gb0", [self.state_sz*2])
@@ -101,7 +119,9 @@ class GRU_Net(object):
             init_state = (ini_0, ini_1)
         
         #states_series, current_state = tf.nn.dynamic_rnn(multicell, self.inputs, initial_state=init_state, dtype=tf.float32)
+        # Dropout1 HERE
         states_series, current_state = tf.nn.dynamic_rnn(multicell, self.inputs, dtype=tf.float32)
+        # Dropout2 HERE
         outputs = tf.reshape(states_series,[-1,self.state_sz])
 
         if self.is_pretrain:
@@ -168,8 +188,8 @@ class GRU_Net(object):
                 
                 feed_sz = local_n//local_bptt
                 feed_losses = empty_array(feed_sz)
-#                 if local_n % local_bptt > 0:
-#                     tf.logging.debug('BPTT({}) caused signal({}) to be truncated by {}'.format(local_bptt, local_n, local_n % local_bptt))
+#                if local_n % local_bptt > 0:
+#                    tf.logging.debug('BPTT({}) caused signal({}) to be truncated by {}'.format(local_bptt, local_n, local_n % local_bptt))
                 
                 for j in range(feed_sz):
                     start_idx = j*local_bptt
@@ -266,8 +286,8 @@ class GRU_Net(object):
             tf.logging.info('Saving parameters to {}'.format(self.model_nm))
             
             # Save the data
-            if not self.is_restore:
-                with open('{}.pkl'.format(self.model_nm), 'wb') as f: 
-                    pickle.dump(data, f)
-                tf.logging.info('Saving data to {}.pkl'.format(self.model_nm))
+#             if not self.is_restore:
+#                 with open('{}.pkl'.format(self.model_nm), 'wb') as f: 
+#                     pickle.dump(data, f)
+#                 tf.logging.info('Saving data to {}.pkl'.format(self.model_nm))
             
