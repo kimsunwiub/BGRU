@@ -21,6 +21,7 @@ dist
 *.tmp*
 *.sh
 *.pkl
+*.swp
 
 Saved_*/*
 *.ipynb*
