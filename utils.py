@@ -5,7 +5,7 @@ import tensorflow as tf
 from matplotlib import gridspec, pyplot as plt
 
 # main.py
-def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None, beta1=None, beta2=None, gain=None, clip_val=None):
+def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None, beta1=None, beta2=None, gain=None, clip_val=None, d1=None, d2=None, d3=None):
     
     def mod_n_epochs(sp, n_epochs):
         prev_n_epochs = int(re.split(r'[()]', sp)[1])
@@ -47,7 +47,7 @@ def mod_name(prev_name, n_epochs, is_pretrain, snr=None, lr=None, beta1=None, be
         mod_split = 'pretrain'.join(prev_split).split('_')
         
     if is_first:
-        mod_split.append('lr({})_betas({},{})_gain({})_clip({})_epoch({})'.format(lr, beta1, beta2, gain, clip_val, n_epochs))
+        mod_split.append('lr({})_betas({},{})_gain({})_clip({})_dropouts({},{},{})_epoch({})'.format(lr, beta1, beta2, gain, clip_val, d1, d2, d3, n_epochs))
         if snr: 
             mod_split.append('SNR({:.4f})'.format(snr))
         

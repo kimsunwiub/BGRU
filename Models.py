@@ -12,7 +12,7 @@ from utils import *
     
 class GRU_Net(object):
 
-    def __init__(self, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, verbose, is_restore, model_nm, n_bits, is_pretrain, gain, clip_val):
+    def __init__(self, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, verbose, is_restore, model_nm, n_bits, is_binary_phase, gain, clip_val, dropout1, dropout_cell, dropout2):
         
         self.feat = 513
         self.n_layers = 2
@@ -28,9 +28,13 @@ class GRU_Net(object):
         self.n_epochs = n_epochs
         self.batch_sz = batch_sz
         self.learning_rate = learning_rate
+
+        self.dropout1 = dropout1
+        self.dropout_cell = dropout_cell
+        self.dropout2 = dropout2
         
         self.is_restore = is_restore
-        self.is_pretrain = is_pretrain
+        self.is_binary_phase = is_binary_phase
         
         if verbose: tf.logging.set_verbosity(tf.logging.DEBUG)
         else: tf.logging.set_verbosity(tf.logging.INFO)
@@ -43,41 +47,31 @@ class GRU_Net(object):
     
     def build_inputs(self):
         
-#        if self.bptt == -1:
-#            self.bptt = 235
-        
         if self.n_bits:
             self.inputs = tf.placeholder(tf.float32, 
-                            [None,None,self.feat * self.n_bits]) 
+                            [None, None, self.feat * self.n_bits]) 
         else:
             self.inputs = tf.placeholder(tf.float32, 
-                            [None,None, self.feat]) 
+                            [None, None, self.feat]) 
         self.targets = tf.placeholder(tf.float32, 
-#                        [self.batch_sz, self.bptt, self.feat])
-                        [None,None, self.feat])
+                        [None, None, self.feat])
 
     def build_GRU(self):
         
-        if self.is_pretrain:
+        if self.is_binary_phase:
             cells = []
             my_weight_initializer=my_xavier_initializer(uniform=False, gain=self.gain)
             weight_initializer=tf.contrib.layers.xavier_initializer(uniform=False)
 
-            # <HERE>
-            # <HERE>
-            # <HERE>
-
-            #cell = 
-
-            # <HERE>
-            # <HERE>
-            # <HERE>
-
-
-
-            cell = TanhGRUCell(self.state_sz, kernel_initializer=my_weight_initializer); cells.append(cell)
-            cell = TanhGRUCell(self.state_sz, kernel_initializer=weight_initializer); cells.append(cell)       
+            cell = TanhGRUCell(self.state_sz, kernel_initializer=my_weight_initializer)
+            dropout=self.dropout_cell
+            cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=1.0 - dropout)
+            cells.append(cell)
+            cell = TanhGRUCell(self.state_sz, kernel_initializer=weight_initializer)
+            cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=1.0 - dropout)
+            cells.append(cell)       
             multicell = tf.contrib.rnn.MultiRNNCell(cells)
+
             initializer = tf.contrib.layers.xavier_initializer(uniform=False)
             W_out = tf.Variable(initializer([self.state_sz, self.feat]))
             b_out = tf.Variable(initializer([self.feat]))
@@ -111,20 +105,23 @@ class GRU_Net(object):
             tanh_cb1 = math_ops.tanh(cb1)
             
             cells = []
-            cell = BinaryGRUCell(self.state_sz, tanh_gk0, tanh_gb0, tanh_ck0, tanh_cb0); cells.append(cell)
-            cell = BinaryGRUCell(self.state_sz, tanh_gk1, tanh_gb1, tanh_ck1, tanh_cb1); cells.append(cell)
+            cell = BinaryGRUCell(self.state_sz, tanh_gk0, tanh_gb0, tanh_ck0, tanh_cb0)
+            cells.append(cell)
+            cell = BinaryGRUCell(self.state_sz, tanh_gk1, tanh_gb1, tanh_ck1, tanh_cb1)
+            cells.append(cell)
             multicell = tf.contrib.rnn.MultiRNNCell(cells)
             W_out = math_ops.tanh(bW_out)
             b_out = math_ops.tanh(bb_out)
-            init_state = (ini_0, ini_1)
+            # init_state = (ini_0, ini_1)
         
         #states_series, current_state = tf.nn.dynamic_rnn(multicell, self.inputs, initial_state=init_state, dtype=tf.float32)
-        # Dropout1 HERE
-        states_series, current_state = tf.nn.dynamic_rnn(multicell, self.inputs, dtype=tf.float32)
-        # Dropout2 HERE
-        outputs = tf.reshape(states_series,[-1,self.state_sz])
+        self.training = tf.placeholder(tf.bool)
+        dropout_1 = tf.layers.dropout(self.inputs, self.dropout1, training=self.training)
+        states_series, current_state = tf.nn.dynamic_rnn(multicell, dropout_1, dtype=tf.float32)
+        dropout_2 = tf.layers.dropout(states_series, self.dropout2, training=self.training)
+        outputs = tf.reshape(dropout_2, [-1,self.state_sz])
 
-        if self.is_pretrain:
+        if self.is_binary_phase:
             self.logits = tf.sigmoid(tf.matmul(outputs, tf.tanh(W_out)) + tf.tanh(b_out))
             self.logits = tf.reshape(self.logits, [self.batch_sz, -1, self.feat])
         else:
@@ -134,7 +131,6 @@ class GRU_Net(object):
                     return 0.5 * (tf.sign(x)+1)
             
             def binary_tanh_grad(x):
-                # <Change name>
                 g = tf.get_default_graph()
                 with g.gradient_override_map({"Sign":"TanhGrads"}):
                     return tf.sign(x)
@@ -144,14 +140,14 @@ class GRU_Net(object):
             self.logits = tf.reshape(self.logits, [self.batch_sz, -1, self.feat])
         
     def build_loss(self):
+
         logits_1d = tf.reshape(self.logits, [-1])
         labels = tf.reshape(self.targets, [-1])
         self.loss = tf.reduce_mean(tf.square(tf.subtract(logits_1d, labels)))
         
     def build_optimizer(self):
+
         opt = tf.train.AdamOptimizer(learning_rate=self.learning_rate, beta1=self.beta1, beta2=self.beta2)
-        # self.op = opt.minimize(self.loss)
-        
         gvs = opt.compute_gradients(self.loss)
         capped_gvs = [(tf.clip_by_value(grad, -self.clip_val, self.clip_val), var) for grad, var in gvs]
         self.op = opt.apply_gradients(capped_gvs)
@@ -181,8 +177,8 @@ class GRU_Net(object):
                 local_n = X[0].shape[0]
                 if self.bptt == -1: 
                     local_bptt = local_n
-                    if local_bptt > 235: # max for large many
-                        local_bptt = 235
+                    if local_bptt > 234: # max for large many
+                        local_bptt = 234
                 else: local_bptt = self.bptt
                 assert (local_bptt <= local_n)
                 
@@ -201,7 +197,8 @@ class GRU_Net(object):
                         [self.op, self.loss],
                         feed_dict={
                             self.inputs: X_feed,
-                            self.targets: y_feed
+                            self.targets: y_feed,
+                            self.training: True
                         })
                     feed_losses[j] = loss
                 
@@ -232,7 +229,8 @@ class GRU_Net(object):
                     [self.loss, self.logits],
                     feed_dict={
                         self.inputs: X,
-                        self.targets: y
+                        self.targets: y,
+                        self.training: False
                     })
                 
                 # Compute SNR
@@ -279,15 +277,8 @@ class GRU_Net(object):
                     
                     pbar.update(1)
             
-            self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_pretrain, self.va_snrs.max(), self.learning_rate,
-                                      self.beta1, self.beta2, self.gain)
+            self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_binary_phase, self.va_snrs.max(), self.learning_rate,
+                                      self.beta1, self.beta2, self.gain, self.clip_val, self.dropout1, self.dropout_cell, self.dropout2)
             # Save the model
             saver.save(sess, self.model_nm)
             tf.logging.info('Saving parameters to {}'.format(self.model_nm))
-            
-            # Save the data
-#             if not self.is_restore:
-#                 with open('{}.pkl'.format(self.model_nm), 'wb') as f: 
-#                     pickle.dump(data, f)
-#                 tf.logging.info('Saving data to {}.pkl'.format(self.model_nm))
-            
