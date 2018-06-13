@@ -50,7 +50,7 @@ class TanhGRUCell(tf.nn.rnn_cell.RNNCell):
       bias_ones = self._bias_initializer
       if self._bias_initializer is None:
         dtype = [a.dtype for a in [inputs, state]][0]
-        bias_ones = init_ops.constant_initializer(1.0, dtype=dtype)
+        bias_ones = init_ops.constant_initializer(0.0, dtype=dtype)
       value = math_ops.sigmoid(
           _linear([inputs, state], 2 * self._num_units, True, bias_ones,
                   self._kernel_initializer))
