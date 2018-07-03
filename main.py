@@ -37,6 +37,8 @@ def parse_arguments():
                         help="Dropout value for outputs (Default: 0.0)")
     parser.add_argument("-o", "--model_nm", type=str, default=None,
                         help="Pretrained model to load")
+    parser.add_argument("-p", "--rho", type=float, default=1.0,
+                        help="Sparsity threshold")
     parser.add_argument("-v", "--verbose",  action='store_true',
                         help = "Print SNR outputs from each epoch (Default: False)")
     parser.add_argument("-y", "--beta1", type=float, default=0.9,
@@ -49,7 +51,7 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
-    with open('data_xl_m.pkl', 'rb') as f: data = pickle.load(f) 
+    with open('data_l_f.pkl', 'rb') as f: data = pickle.load(f) 
     os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"]=str(args.gpu_id)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
@@ -82,16 +84,13 @@ def main():
                     args.clip_val,
                     args.dropout1,
                     args.dropout_cell,
-                    args.dropout2)
+                    args.dropout2,
+                    args.rho)
     model.train(data)
 
     if is_restore:
         args.n_epochs = 0
-    if args.is_binary_phase:
-        plot_name = '{}/{}'.format(dir_results, mod_name(run_info, args.n_epochs, args.is_binary_phase, model.va_snrs.max(), args.learning_rate, args.beta1, args.beta2, args.gain, args.clip_val, args.dropout1, args.dropout_cell, args.dropout2))
-    else:
-        plot_name = '{}/{}'.format(dir_results, mod_name(run_info, args.n_epochs, args.is_binary_phase, model.va_snrs.max()))
-        # Do I need this?
+    plot_name = '{}/{}'.format(dir_results, mod_name(run_info, args.n_epochs, args.is_binary_phase, model.va_snrs.max(), args.learning_rate, args.beta1, args.beta2, args.gain, args.clip_val, args.dropout1, args.dropout_cell, args.dropout2))
     plot_results(model, plot_name)
     
 if __name__ == "__main__":

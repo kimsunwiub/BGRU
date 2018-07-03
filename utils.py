@@ -73,6 +73,16 @@ def tanh_grad(op, grad):
     x, = op.inputs
     return grad * (1-tf.pow(tf.tanh(x), 2))
 
+def B_sigmoid(x):
+    g = tf.get_default_graph()
+    with g.gradient_override_map({"Sign":"SigmoidGrads"}):
+        return 0.5 * (tf.sign(x)+1)
+
+def B_tanh(x):
+    g = tf.get_default_graph()
+    with g.gradient_override_map({"Sign":"TanhGrads"}):
+        return tf.sign(x)
+
 # Models.py
 def empty_array(size):
     """
@@ -105,3 +115,33 @@ def compute_SNR(S, S_hat):
     denominator = np.sum(np.power(S - S_hat, 2), axis=1)
     return np.mean(10*np.log10(numerator/denominator))
 
+# Consumes more memory -->
+def matmul_sparse_outputs(outputs, w_):
+    sparse_outputs = tf.contrib.layers.dense_to_sparse(outputs)
+    return tf.sparse_tensor_dense_matmul(sparse_outputs, w_)
+
+def matmul_sparse_weights(outputs, w_):
+    w_T = tf.transpose(w_)
+    sparse_w_T = tf.contrib.layers.dense_to_sparse(w_T)
+    o_T = tf.transpose(outputs)
+    result = tf.sparse_tensor_dense_matmul(sparse_w_T, o_T)
+    return tf.transpose(result)
+# <--
+
+def get_mask(weight, rho=0.95):
+    shape = weight.get_shape().as_list()
+    allshape = shape[0]
+    if len(shape) > 1:
+        allshape = shape[0] * shape[1]
+    
+    # Find threshold
+    W_ = tf.reshape(weight, [-1])
+    th_p = int(np.round(allshape*rho))
+    sorted_ = tf.gather(W_, tf.nn.top_k(W_, k=allshape).indices)
+    th = tf.gather(sorted_, th_p)
+    
+    # Create mask
+    mask_less = tf.less(weight,th)
+    mask_greater = tf.greater(weight,-th)
+    mask = tf.logical_or(mask_less, mask_greater)
+    return mask

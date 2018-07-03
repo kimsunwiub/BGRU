@@ -12,7 +12,7 @@ from utils import *
     
 class GRU_Net(object):
 
-    def __init__(self, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, verbose, is_restore, model_nm, n_bits, is_binary_phase, gain, clip_val, dropout1, dropout_cell, dropout2):
+    def __init__(self, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, verbose, is_restore, model_nm, n_bits, is_binary_phase, gain, clip_val, dropout1, dropout_cell, dropout2, rho):
         
         self.feat = 513
         self.n_layers = 2
@@ -28,7 +28,8 @@ class GRU_Net(object):
         self.n_epochs = n_epochs
         self.batch_sz = batch_sz
         self.learning_rate = learning_rate
-
+        self.rho = rho
+        
         self.dropout1 = dropout1
         self.dropout_cell = dropout_cell
         self.dropout2 = dropout2
@@ -68,7 +69,6 @@ class GRU_Net(object):
             cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=1.0 - dropout)
             cells.append(cell)
             cell = TanhGRUCell(self.state_sz, kernel_initializer=weight_initializer)
-            cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=1.0 - dropout)
             cells.append(cell)       
             multicell = tf.contrib.rnn.MultiRNNCell(cells)
 
@@ -78,8 +78,9 @@ class GRU_Net(object):
             #init_state = (tf.Variable(initializer([self.batch_sz, self.state_sz])), tf.Variable(initializer([self.batch_sz, self.state_sz])))
             
         else:    
-            bW_out = tf.get_variable("W_out", [self.state_sz, self.feat])
-            bb_out = tf.get_variable("b_out", [self.feat])
+            # Create weight and bias Variables for restoring
+            W_out = tf.get_variable("W_out", [self.state_sz, self.feat])
+            b_out = tf.get_variable("b_out", [self.feat])
             
             # ini_0 = tf.get_variable("ini_0", [self.batch_sz, self.state_sz])
             # ini_1 = tf.get_variable("ini_1", [self.batch_sz, self.state_sz])
@@ -93,25 +94,28 @@ class GRU_Net(object):
             gb1 = tf.get_variable("gb1", [self.state_sz*2])
             ck1 = tf.get_variable("ck1", [self.state_sz*2, self.state_sz])
             cb1 = tf.get_variable("cb1", [self.state_sz])
+            
+            # Initial Tanh operation
+            tanh_W_out = tf.tanh(W_out)
+            tanh_b_out = tf.tanh(b_out)
+            
+            tanh_gk0 = tf.tanh(gk0)
+            tanh_gb0 = tf.tanh(gb0)
+            tanh_ck0 = tf.tanh(ck0)
+            tanh_cb0 = tf.tanh(cb0)
 
-            tanh_gk0 = math_ops.tanh(gk0)
-            tanh_gb0 = math_ops.tanh(gb0)
-            tanh_ck0 = math_ops.tanh(ck0)
-            tanh_cb0 = math_ops.tanh(cb0)
-
-            tanh_gk1 = math_ops.tanh(gk1)
-            tanh_gb1 = math_ops.tanh(gb1)
-            tanh_ck1 = math_ops.tanh(ck1)
-            tanh_cb1 = math_ops.tanh(cb1)
+            tanh_gk1 = tf.tanh(gk1)
+            tanh_gb1 = tf.tanh(gb1)
+            tanh_ck1 = tf.tanh(ck1)
+            tanh_cb1 = tf.tanh(cb1)
             
             cells = []
-            cell = BinaryGRUCell(self.state_sz, tanh_gk0, tanh_gb0, tanh_ck0, tanh_cb0)
+            cell = BinaryGRUCell(self.state_sz, tanh_gk0, tanh_gb0, tanh_ck0, tanh_cb0, self.rho)
             cells.append(cell)
-            cell = BinaryGRUCell(self.state_sz, tanh_gk1, tanh_gb1, tanh_ck1, tanh_cb1)
+            cell = BinaryGRUCell(self.state_sz, tanh_gk1, tanh_gb1, tanh_ck1, tanh_cb1, self.rho)
             cells.append(cell)
             multicell = tf.contrib.rnn.MultiRNNCell(cells)
-            W_out = math_ops.tanh(bW_out)
-            b_out = math_ops.tanh(bb_out)
+            
             # init_state = (ini_0, ini_1)
         
         #states_series, current_state = tf.nn.dynamic_rnn(multicell, self.inputs, initial_state=init_state, dtype=tf.float32)
@@ -125,19 +129,12 @@ class GRU_Net(object):
             self.logits = tf.sigmoid(tf.matmul(outputs, tf.tanh(W_out)) + tf.tanh(b_out))
             self.logits = tf.reshape(self.logits, [self.batch_sz, -1, self.feat])
         else:
-            def binary_sigmoid_grad(x):
-                g = tf.get_default_graph()
-                with g.gradient_override_map({"Sign":"SigmoidGrads"}):
-                    return 0.5 * (tf.sign(x)+1)
-            
-            def binary_tanh_grad(x):
-                g = tf.get_default_graph()
-                with g.gradient_override_map({"Sign":"TanhGrads"}):
-                    return tf.sign(x)
-            
-            self.logits = binary_sigmoid_grad(tf.matmul(outputs, 
-                binary_tanh_grad(W_out)) + binary_tanh_grad(b_out))
-            self.logits = tf.reshape(self.logits, [self.batch_sz, -1, self.feat])
+            mask_w = get_mask(tanh_W_out)
+            mask_b = get_mask(tanh_b_out)
+            w_ = tf.where(mask_w, B_tanh(tanh_W_out), tf.zeros(tanh_W_out.shape))
+            b_ = tf.where(mask_b, B_tanh(tanh_b_out), tf.zeros(tanh_b_out.shape))
+            logits = B_sigmoid(tf.matmul(outputs, w_) + b_)
+            self.logits = tf.reshape(logits, [self.batch_sz, -1, self.feat])
         
     def build_loss(self):
 
@@ -161,9 +158,18 @@ class GRU_Net(object):
             # Initialize result arrays
             n_iter = len(data_tr['M'])//self.batch_sz
             signal_losses = empty_array(n_iter)
+            signal_snrs = empty_array(n_iter)
 
             # Iterate for n_iter (N/b) times
+            
+            
+            # -- 5 for short DEBUG -->
+            #n_iter = 2
+            # < --
+            
+            
             for i in range(n_iter):
+#                 print ("Signals: {}/{}".format(i, n_iter))
                 # Batch inputs
                 start_idx = i*self.batch_sz
                 end_idx = (i+1)*self.batch_sz
@@ -177,8 +183,8 @@ class GRU_Net(object):
                 local_n = X[0].shape[0]
                 if self.bptt == -1: 
                     local_bptt = local_n
-                    if local_bptt > 234: # max for large many
-                        local_bptt = 234
+                    if local_bptt > 200: # max for large many
+                        local_bptt = 200
                 else: local_bptt = self.bptt
                 assert (local_bptt <= local_n)
                 
@@ -188,10 +194,10 @@ class GRU_Net(object):
 #                    tf.logging.debug('BPTT({}) caused signal({}) to be truncated by {}'.format(local_bptt, local_n, local_n % local_bptt))
                 
                 for j in range(feed_sz):
-                    start_idx = j*local_bptt
-                    end_idx = (j+1)*local_bptt
-                    X_feed = X[:,start_idx:end_idx]
-                    y_feed = y[:,start_idx:end_idx]
+                    start_idx_j = j*local_bptt
+                    end_idx_j = (j+1)*local_bptt
+                    X_feed = X[:,start_idx_j:end_idx_j]
+                    y_feed = y[:,start_idx_j:end_idx_j]
                     
                     _, loss = sess.run(
                         [self.op, self.loss],
@@ -201,8 +207,44 @@ class GRU_Net(object):
                             self.training: True
                         })
                     feed_losses[j] = loss
+                    
+                    
+#                 # -- DEBUG -- ** -- ** -- ** -- ** -- ** -- ** -- ** -- 
+#                 # <2> REMOVE all binary activations and add one back each time (W_out) to see if gradient propagates and 
+#                 # also to see which to tune (idk)
+#                 # <3> play arouond with rho 
+#                 # -- ** -- ** -- ** -- ** -- ** -- ** -- ** -- 
+                    
+#                 # Compute SNR on training phase to see faster if it works
+#                 # Run model
+#                 loss, yhat = sess.run(
+#                     [self.loss, self.logits],
+#                     feed_dict={
+#                         self.inputs: X,
+#                         self.targets: y,
+#                         self.training: False
+#                     })
+                
+#                 # Compute SNR
+#                 M = np.array(data_tr['M'][start_idx:end_idx])
+                
+#                 S_hat = np.round(yhat)*M
+#                 S_hat = S_hat.transpose(0,2,1)
+#                 S_hat_i = np.array([istft(s) for s in S_hat])
+                
+#                 S_idx = i*self.batch_sz//data.n_noise
+#                 S = data_tr['S'][S_idx]
+#                 S = S.T
+#                 S_i = np.repeat(istft(S)[None, :], self.batch_sz, axis=0)
+                
+#                 sample_snr = compute_SNR(S_i, S_hat_i)
+#                 print ("LR {} Clip {} Rho {}: SNR: {:.4f}".format(
+#                     self.learning_rate, self.clip_val, self.rho, sample_snr))
+#                 # < -- DEBUG
                 
                 signal_losses[i] = feed_losses.mean()
+#                 signal_snrs[i] = sample_snr
+#             return signal_losses.mean(), signal_snrs.mean()
             return signal_losses.mean()
         
         def _validate(data_va):
@@ -269,16 +311,23 @@ class GRU_Net(object):
             self.tr_losses, self.va_losses, self.va_snrs = empty_array((3,self.n_epochs))
             
             # Iterate and run
+            self.tr_snrs = empty_array(self.n_epochs)
             with tqdm(total=self.n_epochs, desc='Epoch') as pbar:
                 for i in range(self.n_epochs):
+                    #self.tr_losses[i], self.tr_snrs[i] = _train(data.test)#train)
                     self.tr_losses[i] = _train(data.train)
                     self.va_losses[i], self.va_snrs[i] = _validate(data.test)
-                    tf.logging.debug('Epoch {} SNR: {:.2f}'.format(i, self.va_snrs[i]))
+                    tf.logging.debug('Epoch {} SNR: {:.3f} Err_tr: {:.3f} Err_va: {:.3f}'.format(i, self.va_snrs[i], self.tr_losses[i], self.va_losses[i]))
                     
                     pbar.update(1)
             
             self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_binary_phase, self.va_snrs.max(), self.learning_rate,
-                                      self.beta1, self.beta2, self.gain, self.clip_val, self.dropout1, self.dropout_cell, self.dropout2)
+            #self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_binary_phase, self.tr_snrs.max(), self.learning_rate,
+                            self.beta1, self.beta2, self.gain, self.clip_val, self.dropout1, self.dropout_cell, self.dropout2)
             # Save the model
             saver.save(sess, self.model_nm)
             tf.logging.info('Saving parameters to {}'.format(self.model_nm))
+            
+# Deep learning is controlling flow of data and tweaking to extract more features or to combine to get more rich features from which we can make accurate predictions. There are intrinsic qualities in data that we can only conjecture and are unaware truly. By knowing to combine 'tools' in our mathematical toolkit, we can guide the data to learn what we want it to. 
+
+# Leaving note: pretrain again with 'correct' GRU calculations. Tomorrow maybe try with 1e-3 which is MJ's PT lr. ...
