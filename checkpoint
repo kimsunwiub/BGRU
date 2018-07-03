@@ -1,2 +1,2 @@
-model_checkpoint_path: "temp_lr(5e-05)_betas(0.8,0.7)_gain(1e-05)_clip(1e-05)_dropouts(0.05,0.2,0.2)_epoch(2)_SNR(5.9198)"
-all_model_checkpoint_paths: "temp_lr(5e-05)_betas(0.8,0.7)_gain(1e-05)_clip(1e-05)_dropouts(0.05,0.2,0.2)_epoch(2)_SNR(5.9198)"
+model_checkpoint_path: "July3_Phase1"
+all_model_checkpoint_paths: "July3_Phase1"

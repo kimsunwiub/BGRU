@@ -9,9 +9,10 @@ from utils import get_mask, B_tanh, B_sigmoid
 
 _BIAS_VARIABLE_NAME = "bias"
 _WEIGHTS_VARIABLE_NAME = "kernel"
+from tensorflow.python.ops.rnn_cell_impl import LayerRNNCell
 
 @tf_export("nn.rnn_cell.GRUCell") #? Whats this
-class TanhGRUCell(tf.contrib.rnn.LayerRNNCell):
+class TanhGRUCell(LayerRNNCell):
 
   def __init__(self,
                num_units,
@@ -91,7 +92,7 @@ class TanhGRUCell(tf.contrib.rnn.LayerRNNCell):
     return new_h, new_h
 
 @tf_export("nn.rnn_cell.GRUCell")
-class BinaryGRUCell(tf.contrib.rnn.LayerRNNCell):
+class BinaryGRUCell(LayerRNNCell):
 
   def __init__(self,
                num_units,
