@@ -129,8 +129,8 @@ class GRU_Net(object):
             self.logits = tf.sigmoid(tf.matmul(outputs, tf.tanh(W_out)) + tf.tanh(b_out))
             self.logits = tf.reshape(self.logits, [self.batch_sz, -1, self.feat])
         else:
-            mask_w = get_mask(tanh_W_out)
-            mask_b = get_mask(tanh_b_out)
+            mask_w = get_mask(tanh_W_out, self.rho)
+            mask_b = get_mask(tanh_b_out, self.rho)
             w_ = tf.where(mask_w, B_tanh(tanh_W_out), tf.zeros(tanh_W_out.shape))
             b_ = tf.where(mask_b, B_tanh(tanh_b_out), tf.zeros(tanh_b_out.shape))
             logits = B_sigmoid(tf.matmul(outputs, w_) + b_)
@@ -157,19 +157,17 @@ class GRU_Net(object):
             """
             # Initialize result arrays
             n_iter = len(data_tr['M'])//self.batch_sz
+            #print (n_iter)
+            
+            # -- 5 for short DEBUG -->
+            #n_iter = 1
+            # < --
+            
             signal_losses = empty_array(n_iter)
             signal_snrs = empty_array(n_iter)
 
             # Iterate for n_iter (N/b) times
-            
-            
-            # -- 5 for short DEBUG -->
-            #n_iter = 2
-            # < --
-            
-            
             for i in range(n_iter):
-#                 print ("Signals: {}/{}".format(i, n_iter))
                 # Batch inputs
                 start_idx = i*self.batch_sz
                 end_idx = (i+1)*self.batch_sz
@@ -190,8 +188,6 @@ class GRU_Net(object):
                 
                 feed_sz = local_n//local_bptt
                 feed_losses = empty_array(feed_sz)
-#                if local_n % local_bptt > 0:
-#                    tf.logging.debug('BPTT({}) caused signal({}) to be truncated by {}'.format(local_bptt, local_n, local_n % local_bptt))
                 
                 for j in range(feed_sz):
                     start_idx_j = j*local_bptt
@@ -210,21 +206,18 @@ class GRU_Net(object):
                     
                     
 #                 # -- DEBUG -- ** -- ** -- ** -- ** -- ** -- ** -- ** -- 
-#                 # <2> REMOVE all binary activations and add one back each time (W_out) to see if gradient propagates and 
-#                 # also to see which to tune (idk)
-#                 # <3> play arouond with rho 
 #                 # -- ** -- ** -- ** -- ** -- ** -- ** -- ** -- 
                     
 #                 # Compute SNR on training phase to see faster if it works
 #                 # Run model
-#                 loss, yhat = sess.run(
-#                     [self.loss, self.logits],
+#                 yhat = sess.run(
+#                     [self.logits],
 #                     feed_dict={
 #                         self.inputs: X,
 #                         self.targets: y,
 #                         self.training: False
-#                     })
-                
+#                     })[0]
+              
 #                 # Compute SNR
 #                 M = np.array(data_tr['M'][start_idx:end_idx])
                 
@@ -242,9 +235,10 @@ class GRU_Net(object):
 #                     self.learning_rate, self.clip_val, self.rho, sample_snr))
 #                 # < -- DEBUG
                 
-                signal_losses[i] = feed_losses.mean()
+#                 signal_losses[i] = feed_losses.mean()
 #                 signal_snrs[i] = sample_snr
 #             return signal_losses.mean(), signal_snrs.mean()
+#             print (signal_snrs.mean())
             return signal_losses.mean()
         
         def _validate(data_va):
@@ -253,6 +247,7 @@ class GRU_Net(object):
             """
             # Initialize result arrays
             n_iter = len(data_va['M'])//self.batch_sz
+            #n_iter = 1
             signal_losses, signal_snrs = empty_array((2,n_iter))
             
             # Iterate for n_iter (N/b) times
@@ -314,20 +309,16 @@ class GRU_Net(object):
             self.tr_snrs = empty_array(self.n_epochs)
             with tqdm(total=self.n_epochs, desc='Epoch') as pbar:
                 for i in range(self.n_epochs):
-                    #self.tr_losses[i], self.tr_snrs[i] = _train(data.test)#train)
                     self.tr_losses[i] = _train(data.train)
                     self.va_losses[i], self.va_snrs[i] = _validate(data.test)
                     tf.logging.debug('Epoch {} SNR: {:.3f} Err_tr: {:.3f} Err_va: {:.3f}'.format(i, self.va_snrs[i], self.tr_losses[i], self.va_losses[i]))
                     
                     pbar.update(1)
             
-            self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_binary_phase, self.va_snrs.max(), self.learning_rate,
+            # self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_binary_phase, self.va_snrs.max(), self.learning_rate,
             #self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_binary_phase, self.tr_snrs.max(), self.learning_rate,
-                            self.beta1, self.beta2, self.gain, self.clip_val, self.dropout1, self.dropout_cell, self.dropout2)
+            #                self.beta1, self.beta2, self.gain, self.clip_val, self.dropout1, self.dropout_cell, self.dropout2)
             # Save the model
+            self.model_nm = 'Saved_Models/lr{}_rho_{}_SNR{:.4f}'.format(self.learning_rate, self.rho, self.va_snrs.max())
             saver.save(sess, self.model_nm)
             tf.logging.info('Saving parameters to {}'.format(self.model_nm))
-            
-# Deep learning is controlling flow of data and tweaking to extract more features or to combine to get more rich features from which we can make accurate predictions. There are intrinsic qualities in data that we can only conjecture and are unaware truly. By knowing to combine 'tools' in our mathematical toolkit, we can guide the data to learn what we want it to. 
-
-# Leaving note: pretrain again with 'correct' GRU calculations. Tomorrow maybe try with 1e-3 which is MJ's PT lr. ...

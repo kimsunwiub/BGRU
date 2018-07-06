@@ -77,7 +77,7 @@ class TanhGRUCell(LayerRNNCell):
         array_ops.concat([inputs, state], 1), tf.tanh(self._gate_kernel))
     gate_inputs = nn_ops.bias_add(gate_inputs, tf.tanh(self._gate_bias))
 
-    value = math_ops.sigmoid(gate_inputs) # <TODO> gate_inputs print
+    value = math_ops.sigmoid(gate_inputs)
     r, u = array_ops.split(value=value, num_or_size_splits=2, axis=1)
 
     r_state = r * state
@@ -87,7 +87,6 @@ class TanhGRUCell(LayerRNNCell):
     candidate = nn_ops.bias_add(candidate, tf.tanh(self._candidate_bias))
 
     c = self._activation(candidate)
-    ##new_h = u * state + (1 - u) * c
     new_h = (1 - u) * state + u * c
     return new_h, new_h
 
@@ -134,14 +133,11 @@ class BinaryGRUCell(LayerRNNCell):
     mask_w, mask_b = get_mask(self._gate_kernel, self.rho), get_mask(self._gate_bias, self.rho)
     w_ = tf.where(mask_w, B_tanh(self._gate_kernel), tf.zeros(self._gate_kernel.shape))
     b_ = tf.where(mask_b, B_tanh(self._gate_bias), tf.zeros(self._gate_bias.shape))
-    ## <-- not sure if faster than weight * mask format
     
-    ##gate_inputs = matmul_sparse_outputs(array_ops.concat([inputs, state], 1), w_)
     gate_inputs = tf.matmul(array_ops.concat([inputs, state], 1), w_)
     gate_inputs = nn_ops.bias_add(gate_inputs, b_)
 
-    value = tf.sigmoid(gate_inputs) # <TODO> gate_inputs print
-    ##value = B_sigmoid(gate_inputs)
+    value = B_sigmoid(gate_inputs)
     r, u = array_ops.split(value=value, num_or_size_splits=2, axis=1)
 
     r_state = r * state
@@ -150,11 +146,9 @@ class BinaryGRUCell(LayerRNNCell):
     w_ = tf.where(mask_w, B_tanh(self._candidate_kernel), tf.zeros(self._candidate_kernel.shape))
     b_ = tf.where(mask_b, B_tanh(self._candidate_bias), tf.zeros(self._candidate_bias.shape))
     
-    ##candidate = matmul_sparse_outputs(array_ops.concat([inputs, r_state], 1), w_)
     candidate = math_ops.matmul(array_ops.concat([inputs, r_state], 1), w_)
     candidate = nn_ops.bias_add(candidate, b_)
 
     c = B_tanh(candidate)
-    ##new_h = u * state + (1 - u) * c
     new_h = (1 - u) * state + u * c
     return new_h, new_h

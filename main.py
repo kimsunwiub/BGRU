@@ -38,7 +38,7 @@ def parse_arguments():
     parser.add_argument("-o", "--model_nm", type=str, default=None,
                         help="Pretrained model to load")
     parser.add_argument("-p", "--rho", type=float, default=1.0,
-                        help="Sparsity threshold")
+                        help="Sparsity threshold (Default: 1.0)")
     parser.add_argument("-v", "--verbose",  action='store_true',
                         help = "Print SNR outputs from each epoch (Default: False)")
     parser.add_argument("-y", "--beta1", type=float, default=0.9,
@@ -90,7 +90,8 @@ def main():
 
     if is_restore:
         args.n_epochs = 0
-    plot_name = '{}/{}'.format(dir_results, mod_name(run_info, args.n_epochs, args.is_binary_phase, model.va_snrs.max(), args.learning_rate, args.beta1, args.beta2, args.gain, args.clip_val, args.dropout1, args.dropout_cell, args.dropout2))
+    #plot_name = '{}/{}'.format(dir_results, mod_name(run_info, args.n_epochs, args.is_binary_phase, model.va_snrs.max(), args.learning_rate, args.beta1, args.beta2, args.gain, args.clip_val, args.dropout1, args.dropout_cell, args.dropout2))
+    plot_name = 'Saved_Results/lr{}_rho{}_SNR{:.4f}'.format(args.learning_rate, args.rho, model.va_snrs.max())
     plot_results(model, plot_name)
     
 if __name__ == "__main__":
