@@ -63,6 +63,7 @@ def plot_results(model, fn):
     plt.savefig('%s.png' % fn)
     logging.info('Saving results to {}'.format(fn))
 
+"""
 @tf.RegisterGradient("SigmoidGrads")
 def sigmoid_grad(op, grad):
     x, = op.inputs
@@ -82,6 +83,19 @@ def B_tanh(x):
     g = tf.get_default_graph()
     with g.gradient_override_map({"Sign":"TanhGrads"}):
         return tf.sign(x)
+"""
+
+@tf.custom_gradient
+def B_sigmoid(x):
+    def grad(dy):
+        return dy * tf.sigmoid(x) * (1.0 - tf.sigmoid(x)) * 2
+    return 0.5 * (tf.sign(x)+1), grad
+
+@tf.custom_gradient
+def B_tanh(x):
+    def grad(dy):
+        return dy * (1-tf.pow(tf.tanh(x), 2))
+    return tf.sign(x), grad
 
 # Models.py
 def empty_array(size):
