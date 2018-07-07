@@ -164,7 +164,7 @@ class GRU_Net(object):
             # < --
             
             signal_losses = empty_array(n_iter)
-            signal_snrs = empty_array(n_iter)
+#             signal_snrs = empty_array(n_iter)
 
             # Iterate for n_iter (N/b) times
             for i in range(n_iter):
@@ -235,10 +235,11 @@ class GRU_Net(object):
 #                     self.learning_rate, self.clip_val, self.rho, sample_snr))
 #                 # < -- DEBUG
                 
-#                 signal_losses[i] = feed_losses.mean()
+
 #                 signal_snrs[i] = sample_snr
 #             return signal_losses.mean(), signal_snrs.mean()
 #             print (signal_snrs.mean())
+                signal_losses[i] = feed_losses.mean()
             return signal_losses.mean()
         
         def _validate(data_va):

@@ -89,7 +89,7 @@ def B_tanh(x):
 def B_sigmoid(x):
     def grad(dy):
         return dy * tf.sigmoid(x) * (1.0 - tf.sigmoid(x)) * 2
-    return 0.5 * (tf.sign(x)+1), grad
+    return tf.round(0.5 * (tf.sign(x)+1)), grad
 
 @tf.custom_gradient
 def B_tanh(x):
