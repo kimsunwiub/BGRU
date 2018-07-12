@@ -1,4 +1,4 @@
-from GRU_Modifications import TanhGRUCell, BinaryGRUCell
+from GRU_Modifications import TanhGRUCell, BinaryGRUCell, ScalingTanhGRUCell
 from Initializers import my_xavier_initializer
 from tensorflow.python.ops import math_ops
 from librosa.core import istft as istft
@@ -12,7 +12,7 @@ from utils import *
     
 class GRU_Net(object):
 
-    def __init__(self, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, verbose, is_restore, model_nm, n_bits, is_binary_phase, gain, clip_val, dropout1, dropout_cell, dropout2, rho):
+    def __init__(self, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, verbose, is_restore, model_nm, n_bits, is_binary_phase, gain, clip_val, dropout1, dropout_cell, dropout2, scale_t):
         
         self.feat = 513
         self.n_layers = 2
@@ -28,7 +28,7 @@ class GRU_Net(object):
         self.n_epochs = n_epochs
         self.batch_sz = batch_sz
         self.learning_rate = learning_rate
-        self.rho = rho
+        self.scale_t = scale_t
         
         self.dropout1 = dropout1
         self.dropout_cell = dropout_cell
@@ -79,6 +79,7 @@ class GRU_Net(object):
             
         else:    
             # Create weight and bias Variables for restoring
+            
             W_out = tf.get_variable("W_out", [self.state_sz, self.feat])
             b_out = tf.get_variable("b_out", [self.feat])
             
@@ -95,24 +96,75 @@ class GRU_Net(object):
             ck1 = tf.get_variable("ck1", [self.state_sz*2, self.state_sz])
             cb1 = tf.get_variable("cb1", [self.state_sz])
             
-            # Initial Tanh operation
-            tanh_W_out = tf.tanh(W_out)
-            tanh_b_out = tf.tanh(b_out)
+            normed_W_out = normalize(W_out)
+            normed_b_out = normalize(b_out)
             
-            tanh_gk0 = tf.tanh(gk0)
-            tanh_gb0 = tf.tanh(gb0)
-            tanh_ck0 = tf.tanh(ck0)
-            tanh_cb0 = tf.tanh(cb0)
-
-            tanh_gk1 = tf.tanh(gk1)
-            tanh_gb1 = tf.tanh(gb1)
-            tanh_ck1 = tf.tanh(ck1)
-            tanh_cb1 = tf.tanh(cb1)
+            normed_gk0 = normalize(gk0)
+            normed_gb0 = normalize(gb0)
+            normed_ck0 = normalize(ck0)
+            normed_cb0 = normalize(cb0)
+            
+            normed_gk1 = normalize(gk1)
+            normed_gb1 = normalize(gb1)
+            normed_ck1 = normalize(ck1)
+            normed_cb1 = normalize(cb1)
+            
+            def tw_ternarize(x, thre, w_p, w_n):
+                # Source: https://github.com/czhu95/ternarynet/
+                shape = x.get_shape()
+                thre_x = tf.stop_gradient(tf.reduce_max(tf.abs(x)) * thre)
+                mask = tf.ones(shape)
+                mask_p = tf.where(x > thre_x, tf.ones(shape) * w_p, mask)
+                mask_np = tf.where(x < -thre_x, tf.ones(shape) * w_n, mask_p)
+                mask_z = tf.where((x < thre_x) & (x > - thre_x), tf.zeros(shape), mask)
+                with G.gradient_override_map({"Sign": "Identity", "Mul": "Add"}):
+                    w =  tf.sign(x) * tf.stop_gradient(mask_z)
+                w = w * mask_np
+                return w
+            
+            G = tf.get_default_graph()
+            # <TODO> Command-line arguments for Wn, Wp
+            p_g0 = tf.get_variable('p_g0', initializer=0.01)
+            n_g0 = tf.get_variable('n_g0', initializer=0.01)
+            p_g0_b = tf.get_variable('p_g0_b', initializer=1.0)
+            n_g0_b = tf.get_variable('n_g0_b', initializer=1.0)
+            p_c0 = tf.get_variable('p_c0', initializer=0.01)
+            n_c0 = tf.get_variable('n_c0', initializer=0.01)
+            p_c0_b = tf.get_variable('p_c0_b', initializer=0.0025)
+            n_c0_b = tf.get_variable('n_c0_b', initializer=0.0025)
+            
+            p_g1 = tf.get_variable('p_g1', initializer=0.05)
+            n_g1 = tf.get_variable('n_g1', initializer=0.05)
+            p_g1_b = tf.get_variable('p_g1_b', initializer=1.0)
+            n_g1_b = tf.get_variable('n_g1_b', initializer=1.0)
+            p_c1 = tf.get_variable('p_c1', initializer=0.05)
+            n_c1 = tf.get_variable('n_c1', initializer=0.05)
+            p_c1_b = tf.get_variable('p_c1_b', initializer=0.0025)
+            n_c1_b = tf.get_variable('n_c1_b', initializer=0.0025)
+            
+            p_out = tf.get_variable('p_out', initializer=0.05)
+            n_out = tf.get_variable('n_out', initializer=0.05)
+            p_out_b = tf.get_variable('p_out_b', initializer=0.05)
+            n_out_b = tf.get_variable('n_out_b', initializer=0.05)
+            
+            t = self.scale_t
+            ttq_W_out = tw_ternarize(normed_W_out, t, p_out, n_out)
+            ttq_b_out = tw_ternarize(normed_b_out, t, p_out_b, n_out_b)
+            
+            ttq_gk0 = tw_ternarize(normed_gk0, t, p_g0, n_g0)
+            ttq_gb0 = tw_ternarize(normed_gb0, t, p_g0_b, n_g0_b)
+            ttq_ck0 = tw_ternarize(normed_ck0, t, p_c0, n_c0)
+            ttq_cb0 = tw_ternarize(normed_cb0, t, p_c0_b, n_c0_b)
+            
+            ttq_gk1 = tw_ternarize(normed_gk1, t, p_g1, n_g1)
+            ttq_gb1 = tw_ternarize(normed_gb1, t, p_g1_b, n_g1_b)
+            ttq_ck1 = tw_ternarize(normed_ck1, t, p_c1, n_c1)
+            ttq_cb1 = tw_ternarize(normed_cb1, t, p_c1_b, n_c1_b)
             
             cells = []
-            cell = BinaryGRUCell(self.state_sz, tanh_gk0, tanh_gb0, tanh_ck0, tanh_cb0, self.rho)
+            cell = ScalingTanhGRUCell(self.state_sz, ttq_gk0, ttq_gb0, ttq_ck0, ttq_cb0)
             cells.append(cell)
-            cell = BinaryGRUCell(self.state_sz, tanh_gk1, tanh_gb1, tanh_ck1, tanh_cb1, self.rho)
+            cell = ScalingTanhGRUCell(self.state_sz, ttq_gk1, ttq_gb1, ttq_ck1, ttq_cb1)
             cells.append(cell)
             multicell = tf.contrib.rnn.MultiRNNCell(cells)
             
@@ -129,11 +181,7 @@ class GRU_Net(object):
             self.logits = tf.sigmoid(tf.matmul(outputs, tf.tanh(W_out)) + tf.tanh(b_out))
             self.logits = tf.reshape(self.logits, [self.batch_sz, -1, self.feat])
         else:
-            mask_w = get_mask(tanh_W_out, self.rho)
-            mask_b = get_mask(tanh_b_out, self.rho)
-            w_ = tf.where(mask_w, B_tanh(tanh_W_out), tf.zeros(tanh_W_out.shape))
-            b_ = tf.where(mask_b, B_tanh(tanh_b_out), tf.zeros(tanh_b_out.shape))
-            logits = B_sigmoid(tf.matmul(outputs, w_) + b_)
+            logits = B_sigmoid(tf.matmul(outputs, ttq_W_out) + ttq_b_out)
             self.logits = tf.reshape(logits, [self.batch_sz, -1, self.feat])
         
     def build_loss(self):
@@ -146,6 +194,7 @@ class GRU_Net(object):
 
         opt = tf.train.AdamOptimizer(learning_rate=self.learning_rate, beta1=self.beta1, beta2=self.beta2)
         gvs = opt.compute_gradients(self.loss)
+        print (gvs)
         capped_gvs = [(tf.clip_by_value(grad, -self.clip_val, self.clip_val), var) for grad, var in gvs]
         self.op = opt.apply_gradients(capped_gvs)
     
@@ -157,14 +206,13 @@ class GRU_Net(object):
             """
             # Initialize result arrays
             n_iter = len(data_tr['M'])//self.batch_sz
-            #print (n_iter)
             
-            # -- 5 for short DEBUG -->
-            #n_iter = 1
+            # -- 1 for short DEBUG -->
+            # n_iter = 1
+            # signal_snrs = empty_array(n_iter)
             # < --
             
             signal_losses = empty_array(n_iter)
-#             signal_snrs = empty_array(n_iter)
 
             # Iterate for n_iter (N/b) times
             for i in range(n_iter):
@@ -231,8 +279,8 @@ class GRU_Net(object):
 #                 S_i = np.repeat(istft(S)[None, :], self.batch_sz, axis=0)
                 
 #                 sample_snr = compute_SNR(S_i, S_hat_i)
-#                 print ("LR {} Clip {} Rho {}: SNR: {:.4f}".format(
-#                     self.learning_rate, self.clip_val, self.rho, sample_snr))
+#                 print ("LR {} Clip {} Scale_t {}: SNR: {:.4f}".format(
+#                     self.learning_rate, self.clip_val, self.scale_t, sample_snr))
 #                 # < -- DEBUG
                 
 
@@ -248,7 +296,7 @@ class GRU_Net(object):
             """
             # Initialize result arrays
             n_iter = len(data_va['M'])//self.batch_sz
-            #n_iter = 1
+            # n_iter = 3 # DEBUG
             signal_losses, signal_snrs = empty_array((2,n_iter))
             
             # Iterate for n_iter (N/b) times
@@ -316,10 +364,9 @@ class GRU_Net(object):
                     
                     pbar.update(1)
             
-            # self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_binary_phase, self.va_snrs.max(), self.learning_rate,
             #self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_binary_phase, self.tr_snrs.max(), self.learning_rate,
             #                self.beta1, self.beta2, self.gain, self.clip_val, self.dropout1, self.dropout_cell, self.dropout2)
             # Save the model
-            self.model_nm = 'Saved_Models/lr{}_rho_{}_SNR{:.4f}'.format(self.learning_rate, self.rho, self.va_snrs.max())
+            self.model_nm = 'Saved_Models/lr{}_t_{}_SNR{:.4f}'.format(self.learning_rate, self.scale_t, self.va_snrs.max())
             saver.save(sess, self.model_nm)
             tf.logging.info('Saving parameters to {}'.format(self.model_nm))

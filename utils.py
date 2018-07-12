@@ -159,3 +159,6 @@ def get_mask(weight, rho=0.95):
     mask_greater = tf.greater(weight,-th)
     mask = tf.logical_or(mask_less, mask_greater)
     return mask
+
+def normalize(tensor):
+    return tf.div(tensor, tf.reduce_max(tensor))

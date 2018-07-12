@@ -146,7 +146,67 @@ class BinaryGRUCell(LayerRNNCell):
     w_ = tf.where(mask_w, B_tanh(self._candidate_kernel), tf.zeros(self._candidate_kernel.shape))
     b_ = tf.where(mask_b, B_tanh(self._candidate_bias), tf.zeros(self._candidate_bias.shape))
     
-    candidate = math_ops.matmul(array_ops.concat([inputs, r_state], 1), w_)
+    candidate = tf.matmul(array_ops.concat([inputs, r_state], 1), w_)
+    candidate = nn_ops.bias_add(candidate, b_)
+
+    c = B_tanh(candidate)
+    new_h = (1 - u) * state + u * c
+    return new_h, new_h
+
+class ScalingTanhGRUCell(tf.contrib.rnn.LayerRNNCell):
+
+  def __init__(self,
+               num_units,
+               W_gate,
+               b_gate,
+               W_cand,
+               b_cand,
+               activation=None,
+               reuse=None,
+               kernel_initializer=None,
+               bias_initializer=None,
+               name=None):
+    super(ScalingTanhGRUCell , self).__init__(_reuse=reuse, name=name)
+
+    # Inputs must be 2-dimensional.
+    self.input_spec = base_layer.InputSpec(ndim=2)
+
+    self._num_units = num_units
+    self._activation = activation or math_ops.tanh
+    self._kernel_initializer = None
+    self._bias_initializer = None
+    self._gate_kernel = W_gate
+    self._gate_bias = b_gate
+    self._candidate_kernel = W_cand
+    self._candidate_bias = b_cand
+
+  @property
+  def state_size(self):
+    return self._num_units
+
+  @property
+  def output_size(self):
+    return self._num_units
+
+  def build(self, inputs_shape):
+    self.built = True
+
+  def call(self, inputs, state):
+    """Gated recurrent unit (GRU) with nunits cells."""
+    
+    gate_inputs = math_ops.matmul(
+        array_ops.concat([inputs, state], 1), self._gate_kernel)
+    gate_inputs = nn_ops.bias_add(gate_inputs, self._gate_bias)
+
+    value = B_sigmoid(gate_inputs)
+    r, u = array_ops.split(value=value, num_or_size_splits=2, axis=1)
+
+    r_state = r * state
+
+    w_ = self._candidate_kernel
+    b_ = self._candidate_bias
+    candidate = math_ops.matmul(
+        array_ops.concat([inputs, r_state], 1), w_)
     candidate = nn_ops.bias_add(candidate, b_)
 
     c = B_tanh(candidate)
