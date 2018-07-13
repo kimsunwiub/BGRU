@@ -109,19 +109,6 @@ class GRU_Net(object):
             normed_ck1 = normalize(ck1)
             normed_cb1 = normalize(cb1)
             
-            def tw_ternarize(x, thre, w_p, w_n):
-                # Source: https://github.com/czhu95/ternarynet/
-                shape = x.get_shape()
-                thre_x = tf.stop_gradient(tf.reduce_max(tf.abs(x)) * thre)
-                mask = tf.ones(shape)
-                mask_p = tf.where(x > thre_x, tf.ones(shape) * w_p, mask)
-                mask_np = tf.where(x < -thre_x, tf.ones(shape) * w_n, mask_p)
-                mask_z = tf.where((x < thre_x) & (x > - thre_x), tf.zeros(shape), mask)
-                with G.gradient_override_map({"Sign": "Identity", "Mul": "Add"}):
-                    w =  tf.sign(x) * tf.stop_gradient(mask_z)
-                w = w * mask_np
-                return w
-            
             G = tf.get_default_graph()
             # <TODO> Command-line arguments for Wn, Wp
             p_g0 = tf.get_variable('p_g0', initializer=0.01)
@@ -146,6 +133,21 @@ class GRU_Net(object):
             n_out = tf.get_variable('n_out', initializer=0.05)
             p_out_b = tf.get_variable('p_out_b', initializer=0.05)
             n_out_b = tf.get_variable('n_out_b', initializer=0.05)
+            
+            
+            def tw_ternarize(x, thre, w_p, w_n):
+                # Source: https://github.com/czhu95/ternarynet/
+                shape = x.get_shape()
+                thre_x = tf.stop_gradient(tf.reduce_max(tf.abs(x)) * thre)
+                mask = tf.ones(shape)
+                mask_p = tf.where(x > thre_x, tf.ones(shape) * w_p, mask)
+                mask_np = tf.where(x < -thre_x, tf.ones(shape) * w_n, mask_p)
+                mask_z = tf.where((x < thre_x) & (x > - thre_x), tf.zeros(shape), mask)
+                with G.gradient_override_map({"Sign": "TanhGrads", "Mul": "Add"}):
+                    w =  tf.sign(x) * tf.stop_gradient(mask_z)
+                w = w * mask_np
+                return w
+            
             
             t = self.scale_t
             ttq_W_out = tw_ternarize(normed_W_out, t, p_out, n_out)
@@ -194,7 +196,6 @@ class GRU_Net(object):
 
         opt = tf.train.AdamOptimizer(learning_rate=self.learning_rate, beta1=self.beta1, beta2=self.beta2)
         gvs = opt.compute_gradients(self.loss)
-        print (gvs)
         capped_gvs = [(tf.clip_by_value(grad, -self.clip_val, self.clip_val), var) for grad, var in gvs]
         self.op = opt.apply_gradients(capped_gvs)
     
@@ -367,6 +368,6 @@ class GRU_Net(object):
             #self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_binary_phase, self.tr_snrs.max(), self.learning_rate,
             #                self.beta1, self.beta2, self.gain, self.clip_val, self.dropout1, self.dropout_cell, self.dropout2)
             # Save the model
-            self.model_nm = 'Saved_Models/lr{}_t_{}_SNR{:.4f}'.format(self.learning_rate, self.scale_t, self.va_snrs.max())
+            self.model_nm = 'Saved_Models/lr{}_t_{}_betas{},{}_SNR{:.4f}'.format(self.learning_rate, self.scale_t, self.beta1, self.beta2, self.va_snrs.max())
             saver.save(sess, self.model_nm)
             tf.logging.info('Saving parameters to {}'.format(self.model_nm))
