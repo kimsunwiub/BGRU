@@ -12,7 +12,7 @@ from utils import *
     
 class GRU_Net(object):
 
-    def __init__(self, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, verbose, is_restore, model_nm, n_bits, is_binary_phase, gain, clip_val, dropout1, dropout_cell, dropout2, scale_t):
+    def __init__(self, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, verbose, is_restore, model_nm, n_bits, is_binary_phase, gain, clip_val, dropout1, dropout_cell, dropout2, scale_t, tensorboard):
         
         self.feat = 513
         self.n_layers = 2
@@ -36,6 +36,7 @@ class GRU_Net(object):
         
         self.is_restore = is_restore
         self.is_binary_phase = is_binary_phase
+        self.tensorboard = tensorboard
         
         if verbose: tf.logging.set_verbosity(tf.logging.DEBUG)
         else: tf.logging.set_verbosity(tf.logging.INFO)
@@ -75,6 +76,7 @@ class GRU_Net(object):
             initializer = tf.contrib.layers.xavier_initializer(uniform=False)
             W_out = tf.Variable(initializer([self.state_sz, self.feat]))
             b_out = tf.Variable(initializer([self.feat]))
+            
             #init_state = (tf.Variable(initializer([self.batch_sz, self.state_sz])), tf.Variable(initializer([self.batch_sz, self.state_sz])))
             
         else:    
@@ -134,7 +136,6 @@ class GRU_Net(object):
             p_out_b = tf.get_variable('p_out_b', initializer=0.05)
             n_out_b = tf.get_variable('n_out_b', initializer=0.05)
             
-            
             def tw_ternarize(x, thre, w_p, w_n):
                 # Source: https://github.com/czhu95/ternarynet/
                 shape = x.get_shape()
@@ -143,11 +144,10 @@ class GRU_Net(object):
                 mask_p = tf.where(x > thre_x, tf.ones(shape) * w_p, mask)
                 mask_np = tf.where(x < -thre_x, tf.ones(shape) * w_n, mask_p)
                 mask_z = tf.where((x < thre_x) & (x > - thre_x), tf.zeros(shape), mask)
-                with G.gradient_override_map({"Sign": "TanhGrads", "Mul": "Add"}):
+                with G.gradient_override_map({"Sign": "TanhGrads"}):#, "Mul": "Add"}):
                     w =  tf.sign(x) * tf.stop_gradient(mask_z)
                 w = w * mask_np
-                return w
-            
+                return w   
             
             t = self.scale_t
             ttq_W_out = tw_ternarize(normed_W_out, t, p_out, n_out)
@@ -208,11 +208,6 @@ class GRU_Net(object):
             # Initialize result arrays
             n_iter = len(data_tr['M'])//self.batch_sz
             
-            # -- 1 for short DEBUG -->
-            # n_iter = 1
-            # signal_snrs = empty_array(n_iter)
-            # < --
-            
             signal_losses = empty_array(n_iter)
 
             # Iterate for n_iter (N/b) times
@@ -251,44 +246,14 @@ class GRU_Net(object):
                             self.targets: y_feed,
                             self.training: True
                         })
-                    feed_losses[j] = loss
+                    feed_losses[j] = loss                  
                     
-                    
-#                 # -- DEBUG -- ** -- ** -- ** -- ** -- ** -- ** -- ** -- 
-#                 # -- ** -- ** -- ** -- ** -- ** -- ** -- ** -- 
-                    
-#                 # Compute SNR on training phase to see faster if it works
-#                 # Run model
-#                 yhat = sess.run(
-#                     [self.logits],
-#                     feed_dict={
-#                         self.inputs: X,
-#                         self.targets: y,
-#                         self.training: False
-#                     })[0]
-              
-#                 # Compute SNR
-#                 M = np.array(data_tr['M'][start_idx:end_idx])
-                
-#                 S_hat = np.round(yhat)*M
-#                 S_hat = S_hat.transpose(0,2,1)
-#                 S_hat_i = np.array([istft(s) for s in S_hat])
-                
-#                 S_idx = i*self.batch_sz//data.n_noise
-#                 S = data_tr['S'][S_idx]
-#                 S = S.T
-#                 S_i = np.repeat(istft(S)[None, :], self.batch_sz, axis=0)
-                
-#                 sample_snr = compute_SNR(S_i, S_hat_i)
-#                 print ("LR {} Clip {} Scale_t {}: SNR: {:.4f}".format(
-#                     self.learning_rate, self.clip_val, self.scale_t, sample_snr))
-#                 # < -- DEBUG
-                
-
-#                 signal_snrs[i] = sample_snr
-#             return signal_losses.mean(), signal_snrs.mean()
-#             print (signal_snrs.mean())
                 signal_losses[i] = feed_losses.mean()
+    
+                if self.tensorboard:
+                    summary = sess.run([merged])[0]
+                    train_writer.add_summary(summary, i)
+            
             return signal_losses.mean()
         
         def _validate(data_va):
@@ -312,13 +277,19 @@ class GRU_Net(object):
                 y = np.array(data_va['y'][start_idx:end_idx], dtype=np.float32)
                 
                 # Run model
-                loss, yhat = sess.run(
-                    [self.loss, self.logits],
-                    feed_dict={
-                        self.inputs: X,
-                        self.targets: y,
-                        self.training: False
-                    })
+                feed_dict_ = {self.inputs: X,
+                                self.targets: y,
+                                self.training: False
+                                }
+                if self.tensorboard:
+                    loss, yhat, summary = sess.run(
+                        [self.loss, self.logits, merged],
+                        feed_dict=feed_dict_)
+                    test_writer.add_summary(summary, i)
+                else:
+                    loss, yhat = sess.run(
+                        [self.loss, self.logits],
+                        feed_dict=feed_dict_)
                 
                 # Compute SNR
                 M = np.array(data_va['M'][start_idx:end_idx])
@@ -346,8 +317,28 @@ class GRU_Net(object):
         
         # Begin session
         with tf.Session(config=config) as sess:
+                        
             sess.run(tf.global_variables_initializer())
             
+            if self.tensorboard: # Save summaries for Tensorboard
+                names = ['W_out', 'b_out',
+                    'gk0','gb0', 'ck0', 'cb0',
+                    'gk1','gb1', 'ck1', 'cb1']
+                if not self.is_binary_phase:
+                    names += ['p_g0', 'n_g0', 'p_g0_b', 'n_g0_b',
+                              'p_c0', 'n_c0', 'p_c0_b', 'n_c0_b',
+                              'p_g1', 'n_g1', 'p_g1_b', 'n_g1_b',
+                              'p_c1', 'n_c1', 'p_c1_b', 'n_c1_b',
+                              'p_out', 'n_out', 'p_out_b', 'n_out_b']
+                
+                for name,var in zip(names, tf.trainable_variables()):
+                    variable_summaries(var, name)
+
+                log_dir = "/N/u/kimsunw/workspace/BGRU/Saved_Logs"
+                merged = tf.summary.merge_all()
+                train_writer = tf.summary.FileWriter(log_dir + '/train', sess.graph)
+                test_writer = tf.summary.FileWriter(log_dir + '/test')
+        
             # Initialize saver and result arrays
             saver = tf.train.Saver(saver_dict(tf.trainable_variables()))  
             if self.is_restore:
@@ -368,6 +359,7 @@ class GRU_Net(object):
             #self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_binary_phase, self.tr_snrs.max(), self.learning_rate,
             #                self.beta1, self.beta2, self.gain, self.clip_val, self.dropout1, self.dropout_cell, self.dropout2)
             # Save the model
-            self.model_nm = 'Saved_Models/lr{}_t_{}_betas{},{}_SNR{:.4f}'.format(self.learning_rate, self.scale_t, self.beta1, self.beta2, self.va_snrs.max())
-            saver.save(sess, self.model_nm)
-            tf.logging.info('Saving parameters to {}'.format(self.model_nm))
+            # self.model_nm = 'Saved_Models/lr{}_t_{}_betas{},{}_SNR{:.4f}'.format(self.learning_rate, self.scale_t, self.beta1, self.beta2, self.va_snrs.max())
+            # saver.save(sess, self.model_nm)
+            # tf.logging.info('Saving parameters to {}'.format(self.model_nm))
+            #print ("dropout {}_{}_{}: SNR: {}".format(self.dropout1, self.dropout_cell, self.dropout2, self.va_snrs.max()))

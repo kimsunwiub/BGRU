@@ -24,7 +24,9 @@ def parse_arguments():
     parser.add_argument("-b", "--n_bits", type=int, default=4,
                         help="Number of bits used for quantization (Default: 4)")
     parser.add_argument("-c", "--clip_val", type=float, default=1.0,
-                        help="Gradient clipping value)")
+                        help="Gradient clipping value")
+    parser.add_argument("-d", "--tensorboard", action='store_true',
+                        help="Save summaries for Tensorboard")
     parser.add_argument("-e", "--is_binary_phase", action='store_false',
                         help = "Use this option to go into binary traning phase")
     parser.add_argument("-g", "--gain", type=float, default=1.0,
@@ -85,13 +87,14 @@ def main():
                     args.dropout1,
                     args.dropout_cell,
                     args.dropout2,
-                    args.scale_t)
+                    args.scale_t,
+                    args.tensorboard)
     model.train(data)
 
     if is_restore:
         args.n_epochs = 0
     #plot_name = '{}/{}'.format(dir_results, mod_name(run_info, args.n_epochs, args.is_binary_phase, model.va_snrs.max(), args.learning_rate, args.beta1, args.beta2, args.gain, args.clip_val, args.dropout1, args.dropout_cell, args.dropout2))
-    plot_name = 'Saved_Results/lr{}_t_{}_betas{},{}_SNR{:.4f}'.format(args.learning_rate, args.scale_t, args.beta1, args.beta2, model.va_snrs.max())
+    plot_name = 'Saved_Results/lr{}_t_{}_betas{},{}_clip{}_SNR{:.4f}'.format(args.learning_rate, args.scale_t, args.beta1, args.beta2, args.clip_val, model.va_snrs.max())
     plot_results(model, plot_name)
     
 if __name__ == "__main__":
