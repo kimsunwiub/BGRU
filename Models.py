@@ -49,14 +49,15 @@ class GRU_Net(object):
     
     def build_inputs(self):
         
-        if self.n_bits:
-            self.inputs = tf.placeholder(tf.float32, 
-                            [None, None, self.feat * self.n_bits]) 
-        else:
-            self.inputs = tf.placeholder(tf.float32, 
-                            [None, None, self.feat]) 
-        self.targets = tf.placeholder(tf.float32, 
-                        [None, None, self.feat])
+        with tf.variable_scope("input_layer"):
+            if self.n_bits:
+                self.inputs = tf.placeholder(tf.float32, 
+                                [None, None, self.feat * self.n_bits]) 
+            else:
+                self.inputs = tf.placeholder(tf.float32, 
+                                [None, None, self.feat]) 
+            self.targets = tf.placeholder(tf.float32, 
+                            [None, None, self.feat])
 
     def build_GRU(self):
         
@@ -81,22 +82,22 @@ class GRU_Net(object):
             
         else:    
             # Create weight and bias Variables for restoring
-            
-            W_out = tf.get_variable("W_out", [self.state_sz, self.feat])
-            b_out = tf.get_variable("b_out", [self.feat])
+            with tf.variable_scope("out_layer"):
+                W_out = tf.get_variable("W_out", [self.state_sz, self.feat])
+                b_out = tf.get_variable("b_out", [self.feat])
             
             # ini_0 = tf.get_variable("ini_0", [self.batch_sz, self.state_sz])
             # ini_1 = tf.get_variable("ini_1", [self.batch_sz, self.state_sz])
-            
-            gk0 = tf.get_variable("gk0", [self.feat*self.n_bits+self.state_sz, self.state_sz*2])
-            gb0 = tf.get_variable("gb0", [self.state_sz*2])
-            ck0 = tf.get_variable("ck0", [self.feat*self.n_bits+self.state_sz, self.state_sz])
-            cb0 = tf.get_variable("cb0", [self.state_sz])
-
-            gk1 = tf.get_variable("gk1", [self.state_sz*2, self.state_sz*2])
-            gb1 = tf.get_variable("gb1", [self.state_sz*2])
-            ck1 = tf.get_variable("ck1", [self.state_sz*2, self.state_sz])
-            cb1 = tf.get_variable("cb1", [self.state_sz])
+            with tf.variable_scope("layer_1"):
+                gk0 = tf.get_variable("gk", [self.feat*self.n_bits+self.state_sz, self.state_sz*2])
+                gb0 = tf.get_variable("gb", [self.state_sz*2])
+                ck0 = tf.get_variable("ck", [self.feat*self.n_bits+self.state_sz, self.state_sz])
+                cb0 = tf.get_variable("cb", [self.state_sz])
+            with tf.variable_scope("layer_2"):
+                gk1 = tf.get_variable("gk", [self.state_sz*2, self.state_sz*2])
+                gb1 = tf.get_variable("gb", [self.state_sz*2])
+                ck1 = tf.get_variable("ck", [self.state_sz*2, self.state_sz])
+                cb1 = tf.get_variable("cb", [self.state_sz])
             
             normed_W_out = normalize(W_out)
             normed_b_out = normalize(b_out)
@@ -113,14 +114,15 @@ class GRU_Net(object):
             
             G = tf.get_default_graph()
             # <TODO> Command-line arguments for Wn, Wp
-            p_g0 = tf.get_variable('p_g0', initializer=0.01)
-            n_g0 = tf.get_variable('n_g0', initializer=0.01)
-            p_g0_b = tf.get_variable('p_g0_b', initializer=1.0)
-            n_g0_b = tf.get_variable('n_g0_b', initializer=1.0)
-            p_c0 = tf.get_variable('p_c0', initializer=0.01)
-            n_c0 = tf.get_variable('n_c0', initializer=0.01)
-            p_c0_b = tf.get_variable('p_c0_b', initializer=0.0025)
-            n_c0_b = tf.get_variable('n_c0_b', initializer=0.0025)
+            with tf.variable_scope("layer_1_scaling"):
+                p_g0 = tf.get_variable('p_g0', initializer=0.01)
+                n_g0 = tf.get_variable('n_g0', initializer=0.01)
+                p_g0_b = tf.get_variable('p_g0_b', initializer=1.0)
+                n_g0_b = tf.get_variable('n_g0_b', initializer=1.0)
+                p_c0 = tf.get_variable('p_c0', initializer=0.01)
+                n_c0 = tf.get_variable('n_c0', initializer=0.01)
+                p_c0_b = tf.get_variable('p_c0_b', initializer=0.0025)
+                n_c0_b = tf.get_variable('n_c0_b', initializer=0.0025)
             
             p_g1 = tf.get_variable('p_g1', initializer=0.05)
             n_g1 = tf.get_variable('n_g1', initializer=0.05)
@@ -195,9 +197,9 @@ class GRU_Net(object):
     def build_optimizer(self):
 
         opt = tf.train.AdamOptimizer(learning_rate=self.learning_rate, beta1=self.beta1, beta2=self.beta2)
-        gvs = opt.compute_gradients(self.loss)
-        capped_gvs = [(tf.clip_by_value(grad, -self.clip_val, self.clip_val), var) for grad, var in gvs]
-        self.op = opt.apply_gradients(capped_gvs)
+        self.gvs = opt.compute_gradients(self.loss)
+        self.capped_gvs = [(tf.clip_by_value(grad, -self.clip_val, self.clip_val), var) for grad, var in self.gvs]
+        self.op = opt.apply_gradients(self.capped_gvs)
     
     def train(self, data):
         
@@ -239,30 +241,25 @@ class GRU_Net(object):
                     X_feed = X[:,start_idx_j:end_idx_j]
                     y_feed = y[:,start_idx_j:end_idx_j]
                     
+                    feed_dict_ = {self.inputs: X_feed,
+                                self.targets: y_feed,
+                                self.training: True
+                                }
                     _, loss = sess.run(
-                        [self.op, self.loss],
-                        feed_dict={
-                            self.inputs: X_feed,
-                            self.targets: y_feed,
-                            self.training: True
-                        })
-                    feed_losses[j] = loss                  
+                            [self.op, self.loss],
+                            feed_dict=feed_dict_)
+                    feed_losses[j] = loss                         
                     
-                signal_losses[i] = feed_losses.mean()
-    
-                if self.tensorboard:
-                    summary = sess.run([merged])[0]
-                    train_writer.add_summary(summary, i)
+                signal_losses[i] = feed_losses.mean()                    
             
             return signal_losses.mean()
         
-        def _validate(data_va):
+        def _validate(data_va, epoch):
             """
             Helper function to train(): Validation
             """
             # Initialize result arrays
             n_iter = len(data_va['M'])//self.batch_sz
-            # n_iter = 3 # DEBUG
             signal_losses, signal_snrs = empty_array((2,n_iter))
             
             # Iterate for n_iter (N/b) times
@@ -285,7 +282,16 @@ class GRU_Net(object):
                     loss, yhat, summary = sess.run(
                         [self.loss, self.logits, merged],
                         feed_dict=feed_dict_)
-                    test_writer.add_summary(summary, i)
+                    
+                    summary_writer.add_summary(summary, epoch * n_iter + i)
+                    
+                    if i == 0: 
+                        summary_2, summary_3 = sess.run(
+                            [merged_2, merged_3],
+                            feed_dict=feed_dict_)
+                        summary_writer.add_summary(summary_2, epoch)
+                        summary_writer.add_summary(summary_3, epoch)
+                        
                 else:
                     loss, yhat = sess.run(
                         [self.loss, self.logits],
@@ -321,6 +327,7 @@ class GRU_Net(object):
             sess.run(tf.global_variables_initializer())
             
             if self.tensorboard: # Save summaries for Tensorboard
+                # Save summaries of weights and scaling parameters
                 names = ['W_out', 'b_out',
                     'gk0','gb0', 'ck0', 'cb0',
                     'gk1','gb1', 'ck1', 'cb1']
@@ -332,12 +339,31 @@ class GRU_Net(object):
                               'p_out', 'n_out', 'p_out_b', 'n_out_b']
                 
                 for name,var in zip(names, tf.trainable_variables()):
-                    variable_summaries(var, name)
-
+                    tf.summary.histogram(name, var)
+                    tf.summary.scalar(name + '_mean', tf.reduce_mean(var))
+                    tf.summary.scalar(name + '_min', tf.reduce_min(var))
+                    tf.summary.scalar(name + '_max', tf.reduce_max(var))
+                                    
+                # Create FileWriters
                 log_dir = "/N/u/kimsunw/workspace/BGRU/Saved_Logs"
                 merged = tf.summary.merge_all()
-                train_writer = tf.summary.FileWriter(log_dir + '/train', sess.graph)
-                test_writer = tf.summary.FileWriter(log_dir + '/test')
+
+                # Save gradients
+                with tf.variable_scope("grad"):
+                    gk0_summary_op = tf.summary.histogram('gk0', self.gvs[2][0])
+                    ck0_summary_op = tf.summary.histogram('ck0', self.gvs[4][0])
+                    gk1_summary_op = tf.summary.histogram('gk1', self.gvs[6][0])
+                    ck1_summary_op = tf.summary.histogram('ck1', self.gvs[8][0])
+                    merged_2 = tf.summary.merge([gk0_summary_op, ck0_summary_op, gk1_summary_op, ck1_summary_op])
+
+                with tf.variable_scope("clipgrad"):
+                    gk0_summary_op = tf.summary.histogram('gk0', self.capped_gvs[2][0])
+                    ck0_summary_op = tf.summary.histogram('ck0', self.capped_gvs[4][0])
+                    gk1_summary_op = tf.summary.histogram('gk1', self.capped_gvs[6][0])
+                    ck1_summary_op = tf.summary.histogram('ck1', self.capped_gvs[8][0])
+                    merged_3 = tf.summary.merge([gk0_summary_op, ck0_summary_op, gk1_summary_op, ck1_summary_op])
+
+                summary_writer = tf.summary.FileWriter(log_dir + '/test', sess.graph)
         
             # Initialize saver and result arrays
             saver = tf.train.Saver(saver_dict(tf.trainable_variables()))  
@@ -351,7 +377,7 @@ class GRU_Net(object):
             with tqdm(total=self.n_epochs, desc='Epoch') as pbar:
                 for i in range(self.n_epochs):
                     self.tr_losses[i] = _train(data.train)
-                    self.va_losses[i], self.va_snrs[i] = _validate(data.test)
+                    self.va_losses[i], self.va_snrs[i] = _validate(data.test, i)
                     tf.logging.debug('Epoch {} SNR: {:.3f} Err_tr: {:.3f} Err_va: {:.3f}'.format(i, self.va_snrs[i], self.tr_losses[i], self.va_losses[i]))
                     
                     pbar.update(1)
