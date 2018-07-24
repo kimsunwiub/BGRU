@@ -41,8 +41,10 @@ def parse_arguments():
                         help="Pretrained model to load")
     parser.add_argument("-r", "--rs_rate", type=float, default=0.10,
                         help="Random sampling rate for sparsity (Default: 0.10)")
-    parser.add_argument("-t", "--scale_t", type=float, default=0.95,
-                        help="Sparsity threshold (Default: 0.95)")
+    parser.add_argument("-s", "--sparsity_gru", type=float, default=0.95,
+                        help="Sparsity threshold for GRU layer (Default: 0.95)")
+    parser.add_argument("-t", "--sparsity_out", type=float, default=0.95,
+                        help="Sparsity threshold for output layer (Default: 0.95)")
     parser.add_argument("-v", "--verbose",  action='store_true',
                         help = "Print SNR outputs from each epoch (Default: False)")
     parser.add_argument("-y", "--beta1", type=float, default=0.9,
@@ -89,7 +91,8 @@ def main():
                     args.dropout1,
                     args.dropout_cell,
                     args.dropout2,
-                    args.scale_t,
+                    args.sparsity_gru,
+                    args.sparsity_out,
                     args.tensorboard,
                     args.rs_rate)
     model.train(data)
@@ -97,7 +100,7 @@ def main():
     if is_restore:
         args.n_epochs = 0
     #plot_name = '{}/{}'.format(dir_results, mod_name(run_info, args.n_epochs, args.is_binary_phase, model.va_snrs.max(), args.learning_rate, args.beta1, args.beta2, args.gain, args.clip_val, args.dropout1, args.dropout_cell, args.dropout2))
-    plot_name = 'Saved_Results/lr{}_t_{}_betas{},{}_clip{}_SNR{:.4f}'.format(args.learning_rate, args.scale_t, args.beta1, args.beta2, args.clip_val, model.va_snrs.max())
+    plot_name = 'Saved_Results/lr{}_t_{}_betas{},{}_clip{}_SNR{:.4f}'.format(args.learning_rate, args.sparsity_gru, args.beta1, args.beta2, args.clip_val, model.va_snrs.max())
     plot_results(model, plot_name)
     
 if __name__ == "__main__":

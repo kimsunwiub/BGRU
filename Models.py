@@ -12,7 +12,7 @@ from utils import *
     
 class GRU_Net(object):
 
-    def __init__(self, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, verbose, is_restore, model_nm, n_bits, is_binary_phase, gain, clip_val, dropout1, dropout_cell, dropout2, scale_t, tensorboard, rs_rate):
+    def __init__(self, bptt, n_epochs, learning_rate, beta1, beta2, batch_sz, verbose, is_restore, model_nm, n_bits, is_binary_phase, gain, clip_val, dropout1, dropout_cell, dropout2, sparsity_gru, sparsity_out, tensorboard, rs_rate):
         
         self.feat = 513
         self.n_layers = 2
@@ -28,7 +28,8 @@ class GRU_Net(object):
         self.n_epochs = n_epochs
         self.batch_sz = batch_sz
         self.learning_rate = learning_rate
-        self.scale_t = scale_t
+        self.sparsity_gru = sparsity_gru
+        self.sparsity_out = sparsity_out
         self.rs_rate = rs_rate
         
         self.dropout1 = dropout1
@@ -100,22 +101,6 @@ class GRU_Net(object):
                 ck1 = tf.get_variable("ck", [self.state_sz*2, self.state_sz])
                 cb1 = tf.get_variable("cb", [self.state_sz])
             
-#             normed_W_out = normalize(W_out)
-#             normed_b_out = normalize(b_out)
-            
-#             ### normed_ini0 = normalize(ini0)
-#             ### normed_ini1 = normalize(ini1)
-            
-#             normed_gk0 = normalize(gk0)
-#             normed_gb0 = normalize(gb0)
-#             normed_ck0 = normalize(ck0)
-#             normed_cb0 = normalize(cb0)
-            
-#             normed_gk1 = normalize(gk1)
-#             normed_gb1 = normalize(gb1)
-#             normed_ck1 = normalize(ck1)
-#             normed_cb1 = normalize(cb1)
-            
             # <TODO> Command-line arguments for Wn, Wp
             with tf.variable_scope("layer_1_scaling"):
                 p_g0 = tf.get_variable('p_g0', initializer=0.00975)
@@ -142,76 +127,29 @@ class GRU_Net(object):
                 ### p_ini1 = tf.get_variable('p_ini', initializer=0.???)
                 ### n_ini1 = tf.get_variable('n_ini', initializer=0.???)
             
-            with tf.variable_scope("out_layer_scaling"):
+            with tf.variable_scope("layer_out_scaling"):
                 p_out = tf.get_variable('p_out', initializer=0.045)
                 n_out = tf.get_variable('n_out', initializer=0.045)
                 p_out_b = tf.get_variable('p_out_b', initializer=0.049)
                 n_out_b = tf.get_variable('n_out_b', initializer=0.0515)
-            
-#             def tw_ternarize(x, thre, w_p, w_n):
-#                 # Source: https://github.com/czhu95/ternarynet/
-#                 shape = x.get_shape()
-#                 thre_x =tf.reduce_max(tf.abs(x)) * thre
-#                 mask = tf.ones(shape)
-#                 mask_p = tf.where(x > thre_x, tf.ones(shape) * w_p, mask)
-#                 mask_np = tf.where(x < -thre_x, tf.ones(shape) * w_n, mask_p)
-#                 mask_z = tf.where((x < thre_x) & (x > - thre_x), tf.zeros(shape), mask)
-#                 w =  B_tanh(x) * mask_z
-#                 w = w * mask_np
-#                 return w   
-            
-#             t = self.scale_t
-#             ttq_W_out = tw_ternarize(normed_W_out, t, p_out, n_out)
-#             ttq_b_out = tw_ternarize(normed_b_out, t, p_out_b, n_out_b)
-            
-#             ttq_gk0 = tw_ternarize(normed_gk0, t, p_g0, n_g0)
-#             ttq_gb0 = tw_ternarize(normed_gb0, t, p_g0_b, n_g0_b)
-#             ttq_ck0 = tw_ternarize(normed_ck0, t, p_c0, n_c0)
-#             ttq_cb0 = tw_ternarize(normed_cb0, t, p_c0_b, n_c0_b)
-#             ### ttq_ini0 = tw_ternarize(normed_ini0, t, p_ini0, n_ini0)
-            
-#             ttq_gk1 = tw_ternarize(normed_gk1, t, p_g1, n_g1)
-#             ttq_gb1 = tw_ternarize(normed_gb1, t, p_g1_b, n_g1_b)
-#             ttq_ck1 = tw_ternarize(normed_ck1, t, p_c1, n_c1)
-#             ttq_cb1 = tw_ternarize(normed_cb1, t, p_c1_b, n_c1_b)
-#             ### ttq_ini1 = tw_ternarize(normed_ini1, t, p_ini1, n_ini1)
-            
-            def give_sparsity_two_th(x, t, w_p, w_n, rs_rate_=0.1):
-                # Preserve original shape info
-                shape_ = x.get_shape().as_list()
-                # Vectorixe for getting threshold
-                x_v = tf.reshape(x, [-1])
-                len_ = x_v.get_shape().as_list()[0]
-                # Random sampling for performance
-                rs_len_ = int(len_ * rs_rate_)
-                rs_idx_ = tf.random_uniform([rs_len_], minval=0, maxval=len_, dtype=tf.int32)
-                x_v = tf.gather(x_v, rs_idx_)
-                # Sort the randomly sampled vector and get sparsity threshold
-                sorted_ = tf.gather(x_v, tf.nn.top_k(x_v, k=rs_len_).indices)
-                n_thre_x = sorted_[int(rs_len_ * t)]
-                p_thre_x = sorted_[int(rs_len_ * (1-t))]
-                # Apply sparsity and scaling
-                mask_ = tf.zeros(shape_)
-                mask_p = tf.where(x > p_thre_x, tf.ones(shape_) * w_p, mask_)
-                mask_np = tf.where(x < n_thre_x, tf.ones(shape_) * w_n, mask_p)
-                w =  B_tanh(x) * mask_np
-                return w
-            
+                                
             ## tf variable % 10 == 0: statement ## TODO
-            # TOdo diogff rho value for out layer
-            sparse_W_out = give_sparsity_two_th(W_out, self.scale_t, p_out, n_out, self.rs_rate)
-            sparse_b_out = give_sparsity_two_th(b_out, self.scale_t, p_out_b, n_out_b, self.rs_rate)
+            with tf.variable_scope("layer_1_sparsity"):
+                sparse_gk0 = give_sparsity_two_th(gk0, self.sparsity_gru, p_g0, n_g0, self.rs_rate)
+                sparse_gb0 = give_sparsity_two_th(gb0, self.sparsity_gru, p_g0_b, n_g0_b, self.rs_rate)
+                sparse_ck0 = give_sparsity_two_th(ck0, self.sparsity_gru, p_c0, n_c0, self.rs_rate)
+                sparse_cb0 = give_sparsity_two_th(cb0, self.sparsity_gru, p_c0_b, n_c0_b, self.rs_rate)
 
-            sparse_gk0 = give_sparsity_two_th(gk0, self.scale_t, p_g0, n_g0, self.rs_rate)
-            sparse_gb0 = give_sparsity_two_th(gb0, self.scale_t, p_g0_b, n_g0_b, self.rs_rate)
-            sparse_ck0 = give_sparsity_two_th(ck0, self.scale_t, p_c0, n_c0, self.rs_rate)
-            sparse_cb0 = give_sparsity_two_th(cb0, self.scale_t, p_c0_b, n_c0_b, self.rs_rate)
-
-            sparse_gk1 = give_sparsity_two_th(gk1, self.scale_t, p_g1, n_g1, self.rs_rate)
-            sparse_gb1 = give_sparsity_two_th(gb1, self.scale_t, p_g1_b, n_g1_b, self.rs_rate)
-            sparse_ck1 = give_sparsity_two_th(ck1, self.scale_t, p_c1, n_c1, self.rs_rate)
-            sparse_cb1 = give_sparsity_two_th(cb1, self.scale_t, p_c1_b, n_c1_b, self.rs_rate)
+            with tf.variable_scope("layer_2_sparsity"):
+                sparse_gk1 = give_sparsity_two_th(gk1, self.sparsity_gru, p_g1, n_g1, self.rs_rate)
+                sparse_gb1 = give_sparsity_two_th(gb1, self.sparsity_gru, p_g1_b, n_g1_b, self.rs_rate)
+                sparse_ck1 = give_sparsity_two_th(ck1, self.sparsity_gru, p_c1, n_c1, self.rs_rate)
+                sparse_cb1 = give_sparsity_two_th(cb1, self.sparsity_gru, p_c1_b, n_c1_b, self.rs_rate)
             
+            with tf.variable_scope("layer_out_sparsity"):
+                sparse_W_out = give_sparsity_two_th(W_out, self.sparsity_out, p_out, n_out, self.rs_rate)
+                sparse_b_out = give_sparsity_two_th(b_out, self.sparsity_out, p_out_b, n_out_b, self.rs_rate)
+                
             cells = []
             cell = ScalingTanhGRUCell(self.state_sz, sparse_gk0, sparse_gb0, sparse_ck0, sparse_cb0)
             cells.append(cell)
@@ -435,7 +373,7 @@ class GRU_Net(object):
             # self.model_nm =  mod_name(self.model_nm, self.n_epochs, self.is_binary_phase, self.tr_snrs.max(), self.learning_rate,
             #               self.beta1, self.beta2, self.gain, self.clip_val, self.dropout1, self.dropout_cell, self.dropout2)
             # Save the model
-            # self.model_nm = 'Saved_Models/lr{}_t_{}_betas{},{}_SNR{:.4f}'.format(self.learning_rate, self.scale_t, self.beta1, self.beta2, self.va_snrs.max())
+            # self.model_nm = 'Saved_Models/lr{}_t_{}_betas{},{}_SNR{:.4f}'.format(self.learning_rate, self.sparsity_gru, self.beta1, self.beta2, self.va_snrs.max())
             # saver.save(sess, self.model_nm)
             # tf.logging.info('Saving parameters to {}'.format(self.model_nm))
             #print ("dropout {}_{}_{}: SNR: {}".format(self.dropout1, self.dropout_cell, self.dropout2, self.va_snrs.max()))
