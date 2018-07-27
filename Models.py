@@ -104,7 +104,6 @@ class GRU_Net(object):
             # <TODO> Command-line arguments for Wn, Wp
             with tf.variable_scope("layer_1_scaling"):
                 p_g0 = tf.get_variable('p_g0', initializer=0.00975)
-                self.temp = p_g0
                 n_g0 = tf.get_variable('n_g0', initializer=0.00990)
                 p_g0_b = tf.get_variable('p_g0_b', initializer=1.0)
                 n_g0_b = tf.get_variable('n_g0_b', initializer=1.0)
@@ -132,23 +131,22 @@ class GRU_Net(object):
                 n_out = tf.get_variable('n_out', initializer=0.045)
                 p_out_b = tf.get_variable('p_out_b', initializer=0.049)
                 n_out_b = tf.get_variable('n_out_b', initializer=0.0515)
-                                
-            ## tf variable % 10 == 0: statement ## TODO
+             
             with tf.variable_scope("layer_1_sparsity"):
-                sparse_gk0 = give_sparsity_two_th(gk0, self.sparsity_gru, p_g0, n_g0, self.rs_rate)
-                sparse_gb0 = give_sparsity_two_th(gb0, self.sparsity_gru, p_g0_b, n_g0_b, self.rs_rate)
-                sparse_ck0 = give_sparsity_two_th(ck0, self.sparsity_gru, p_c0, n_c0, self.rs_rate)
-                sparse_cb0 = give_sparsity_two_th(cb0, self.sparsity_gru, p_c0_b, n_c0_b, self.rs_rate)
+                sparse_gk0, q_err_gk0 = give_sparsity_two_th(gk0, self.sparsity_gru, p_g0, n_g0, self.rs_rate)
+                sparse_gb0, q_err_gb0 = give_sparsity_two_th(gb0, self.sparsity_gru, p_g0_b, n_g0_b, self.rs_rate)
+                sparse_ck0, q_err_ck0 = give_sparsity_two_th(ck0, self.sparsity_gru, p_c0, n_c0, self.rs_rate)
+                sparse_cb0, q_err_cb0 = give_sparsity_two_th(cb0, self.sparsity_gru, p_c0_b, n_c0_b, self.rs_rate)
 
             with tf.variable_scope("layer_2_sparsity"):
-                sparse_gk1 = give_sparsity_two_th(gk1, self.sparsity_gru, p_g1, n_g1, self.rs_rate)
-                sparse_gb1 = give_sparsity_two_th(gb1, self.sparsity_gru, p_g1_b, n_g1_b, self.rs_rate)
-                sparse_ck1 = give_sparsity_two_th(ck1, self.sparsity_gru, p_c1, n_c1, self.rs_rate)
-                sparse_cb1 = give_sparsity_two_th(cb1, self.sparsity_gru, p_c1_b, n_c1_b, self.rs_rate)
+                sparse_gk1, q_err_gk1 = give_sparsity_two_th(gk1, self.sparsity_gru, p_g1, n_g1, self.rs_rate)
+                sparse_gb1, q_err_gb1 = give_sparsity_two_th(gb1, self.sparsity_gru, p_g1_b, n_g1_b, self.rs_rate)
+                sparse_ck1, q_err_ck1 = give_sparsity_two_th(ck1, self.sparsity_gru, p_c1, n_c1, self.rs_rate)
+                sparse_cb1, q_err_cb1 = give_sparsity_two_th(cb1, self.sparsity_gru, p_c1_b, n_c1_b, self.rs_rate)
             
             with tf.variable_scope("layer_out_sparsity"):
-                sparse_W_out = give_sparsity_two_th(W_out, self.sparsity_out, p_out, n_out, self.rs_rate)
-                sparse_b_out = give_sparsity_two_th(b_out, self.sparsity_out, p_out_b, n_out_b, self.rs_rate)
+                sparse_W_out, q_err_W_out = give_sparsity_two_th(W_out, self.sparsity_out, p_out, n_out, self.rs_rate)
+                sparse_b_out, q_err_b_out = give_sparsity_two_th(b_out, self.sparsity_out, p_out_b, n_out_b, self.rs_rate)
                 
             cells = []
             cell = ScalingTanhGRUCell(self.state_sz, sparse_gk0, sparse_gb0, sparse_ck0, sparse_cb0)
@@ -174,11 +172,19 @@ class GRU_Net(object):
             logits = B_sigmoid(tf.matmul(outputs, sparse_W_out) + sparse_b_out)
             self.logits = tf.reshape(logits, [self.batch_sz, -1, self.feat])
         
+            self.q_loss = tf.reduce_sum(q_err_gk0 + q_err_gb0 + q_err_ck0 + q_err_cb0 + 
+                                        q_err_gk1 + q_err_gb1 + q_err_ck1 + q_err_cb1 + 
+                                        q_err_W_out + q_err_b_out)
+            # TB: q_loss
+        
     def build_loss(self):
 
         logits_1d = tf.reshape(self.logits, [-1])
         labels = tf.reshape(self.targets, [-1])
         self.loss = tf.reduce_mean(tf.square(tf.subtract(logits_1d, labels)))
+        # TB: loss
+#         if not self.is_binary_phase:
+#             self.loss += self.q_loss
         
     def build_optimizer(self):
 
@@ -271,7 +277,7 @@ class GRU_Net(object):
                     
                     summary_writer.add_summary(summary, epoch * n_iter + i)
                     
-                    if i == 0: 
+                    if i == 0: # ow, resource exhausts
                         summary_2, summary_3 = sess.run(
                             [merged_2, merged_3],
                             feed_dict=feed_dict_)
@@ -326,16 +332,18 @@ class GRU_Net(object):
                               'p_out', 'n_out', 'p_out_b', 'n_out_b']
                 
                 for name,var in zip(names, tf.trainable_variables()):
-                    tf.summary.histogram(name, var)
-                    tf.summary.scalar(name + '_mean', tf.reduce_mean(var))
-                    tf.summary.scalar(name + '_min', tf.reduce_min(var))
-                    tf.summary.scalar(name + '_max', tf.reduce_max(var))
+                    with tf.variable_scope(name):
+                        tf.summary.histogram(name, var)
+                        tf.summary.scalar(name + '_mean', tf.reduce_mean(var))
+                        tf.summary.scalar(name + '_min', tf.reduce_min(var))
+                        tf.summary.scalar(name + '_max', tf.reduce_max(var))
                                     
                 # Create FileWriters
                 log_dir = "/N/u/kimsunw/workspace/BGRU/Saved_Logs"
                 merged = tf.summary.merge_all()
 
                 # Save gradients
+                # TODO: Save grads for Wn,Wp
                 with tf.variable_scope("grad"):
                     gk0_summary_op = tf.summary.histogram('gk0', self.gvs[2][0])
                     ck0_summary_op = tf.summary.histogram('ck0', self.gvs[4][0])
@@ -350,7 +358,7 @@ class GRU_Net(object):
                     ck1_summary_op = tf.summary.histogram('ck1', self.capped_gvs[8][0])
                     merged_3 = tf.summary.merge([gk0_summary_op, ck0_summary_op, gk1_summary_op, ck1_summary_op])
 
-                summary_writer = tf.summary.FileWriter(log_dir + '/test', sess.graph)
+                summary_writer = tf.summary.FileWriter(log_dir + '/test/name', sess.graph)
         
             # Initialize saver and result arrays
             saver = tf.train.Saver(saver_dict(tf.trainable_variables()))  
@@ -365,7 +373,7 @@ class GRU_Net(object):
                 for i in range(self.n_epochs):
                     self.tr_losses[i] = _train(data.train)
                     self.va_losses[i], self.va_snrs[i] = _validate(data.test, i)
-                    # TODO: Add va_snr on tb
+                    # TB: SNR
                     tf.logging.debug('Epoch {} SNR: {:.3f} Err_tr: {:.3f} Err_va: {:.3f}'.format(i, self.va_snrs[i], self.tr_losses[i], self.va_losses[i]))
                     
                     pbar.update(1)

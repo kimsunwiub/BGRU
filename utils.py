@@ -160,19 +160,31 @@ def get_mask(weight, rho=0.95):
     mask_greater = tf.greater(weight,-th)
     mask = tf.logical_or(mask_less, mask_greater)
     return mask
-
-def normalize(tensor):
-    return tf.div(tensor, tf.reduce_max(tensor))
-
-def variable_summaries(var, name_scope):
-  """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
-  with tf.name_scope(name_scope):
-    mean = tf.reduce_mean(var)
-    tf.summary.scalar('mean', mean)
-    with tf.name_scope('stddev'):
-      stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-    tf.summary.scalar('stddev', stddev)
-    tf.summary.scalar('max', tf.reduce_max(var))
-    tf.summary.scalar('min', tf.reduce_min(var))
-    tf.summary.histogram('histogram', var)
   
+def give_sparsity_two_th(x, t, w_p, w_n, rs_rate_):
+    # Preserve original shape info
+    shape_ = x.get_shape().as_list()
+    # Vectorixe for getting threshold
+    x_v = tf.reshape(x, [-1])
+    len_ = x_v.get_shape().as_list()[0]
+    # Random sampling for performance
+    rs_len_ = int(len_ * rs_rate_)
+    rs_idx_ = tf.random_uniform([rs_len_], minval=0, maxval=len_, dtype=tf.int32)
+    x_v = tf.gather(x_v, rs_idx_)
+    # Sort the randomly sampled vector and get sparsity threshold
+    sorted_ = tf.gather(x_v, tf.nn.top_k(x_v, k=rs_len_).indices)
+    n_thre_x = sorted_[int(rs_len_ * t)]
+    p_thre_x = sorted_[int(rs_len_ * (1-t))]
+    # Apply sparsity and scaling
+    mask_ = tf.zeros(shape_)
+    mask_p = tf.where(x > p_thre_x, tf.ones(shape_) * w_p, mask_)
+    mask_np = tf.where(x < n_thre_x, tf.ones(shape_) * w_n, mask_p)
+    w =  B_tanh(x) * mask_np
+    
+    # Compute quantization error
+    right_err = tf.where(x > p_thre_x, tf.square(x - w_p), tf.zeros(shape_))
+    mid_err = tf.where((n_thre_x < x) & (x < p_thre_x), tf.square(x), tf.zeros(shape_))
+    left_err = tf.where(x < n_thre_x, tf.square(x - w_n), tf.zeros(shape_))
+    q_err = tf.reduce_mean(right_err + mid_err + left_err)
+    
+    return w, q_err
