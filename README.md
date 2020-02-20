@@ -21,7 +21,7 @@ python training_stage_1.py 5 5 3 0.0001 0.4 0.9 50 1
 ### Training stage 2
 * To perform incremental binarization,
 ```
-python training_stage_2.py 
+python training_stage_2.py 5 5 9e-5 0.1 Phase_1_Ep500
 ```
 
 ### Datasets used in this repository
