@@ -1,16 +1,21 @@
 ## Bitwise Recurrent Neural Networks: 
 
-About: 
+About: Incremental approach to binarizing highly sensitive recurrent neural networks. The model is sequentially trained from a real-valued network initially, and re-trained (fine-tuned) with weights quantized at 10% increments until fully binarized. 
 
-Acknowledgements:
+This project was supported by Intel Corporation.
+
+Paper: Incremental Binarization On Recurrent Neural Networks For Single-Channel Source Sepration. Link: https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=8682595
 
 ### Repository structure
 
 #### training_stage_1.py
-*
+* First-phase pretraining a real-valued network.
+
+#### training_stage_1.py
+* Second-phase incremental binarization process.
 
 ### Data Generation
-* 
+* To be posted soon.
 
 ### Training stage 1
 * To pretrain the real-valued network, 
