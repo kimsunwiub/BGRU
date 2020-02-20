@@ -1,10 +1,19 @@
 import os
 import numpy as np
+import librosa
 import pickle
 import time
 from argparse import ArgumentParser
 
 import tensorflow as tf
+
+from tensorflow.python.util.tf_export import tf_export
+from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import init_ops
+from tensorflow.python.ops import array_ops
+from tensorflow.python.ops import nn_ops
+from tensorflow.python.layers import base as base_layer
+from tensorflow.python.ops.rnn_cell_impl import LayerRNNCell
 
 def SDR(s,sr):
     eps=1e-20
@@ -106,6 +115,8 @@ def parse_arguments():
     
     return parser.parse_args()
 
+args = parse_arguments()
+
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]=str(args.gpu_id)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
@@ -174,52 +185,49 @@ with tf.compat.v1.Session() as sess:
     tic = time.time()
     sess.run(tf.compat.v1.global_variables_initializer())
     saver = tf.compat.v1.train.Saver(saver_dict_p1(tf.compat.v1.trainable_variables()))
-    with tqdm(total=args.num_epochs, desc='GPU({}) Epoch'.format(args.gpu_id)) as pbar:
-        for e in range(args.num_epochs):
-            curr_tr_err,curr_te_err,curr_te_snr = [],[],[]
-            # Train
-            for i in range(0, len(trXH), args.bs):
-            #for i in range(0, len(trXH)//10, args.bs):
-                feed_x_batch = np.array(trXH[i:i+args.bs])
-                feed_y_batch = np.array(trY[i:i+args.bs])
-                for j in range(0, feed_x_batch.shape[-1], args.bptt):
-                    feed_x_bptt = np.transpose(feed_x_batch[:,:,j:j+args.bptt], (0,2,1))
-                    feed_y_bptt = np.transpose(feed_y_batch[:,:,j:j+args.bptt], (0,2,1))
-                    if feed_x_bptt.shape[1] >= args.bptt:
-                        _tr_err, _ = sess.run([tr_err, op], 
-                                              feed_dict={inputs: feed_x_bptt, target: feed_y_bptt})
-                        curr_tr_err.append(_tr_err)
-                
-            mean_tr_err = np.array(curr_tr_err).mean()
-            tot_tr_err.append(mean_tr_err)
-            pbar.update(1)
-            print ("Epoch {} Tr_Err {}".format(e, mean_tr_err))
-            #Test
-            for i in range(0, len(teXH), args.bs):
-                feed_x_batch = np.array(teX[i:i+args.bs])
-                feed_xh_batch = np.array(teXH[i:i+args.bs])
-                feed_y_batch = np.array(teY[i:i+args.bs])
-                feed_s_batch = np.array(teS[i:i+args.bs])
-                for j in range(0, feed_x_batch.shape[-1], args.bptt):
-                    feed_x_bptt = np.transpose(feed_x_batch[:,:,j:j+args.bptt], (0,2,1))
-                    feed_xh_bptt = np.transpose(feed_xh_batch[:,:,j:j+args.bptt], (0,2,1))
-                    feed_y_bptt = np.transpose(feed_y_batch[:,:,j:j+args.bptt], (0,2,1))
-                    feed_s_bptt = feed_s_batch[:,:,j:j+args.bptt]
-                    if feed_x_bptt.shape[1] >= args.bptt:
-                        _te_err, pred_y, _ = sess.run([tr_err, trYh, op], 
-                                                      feed_dict={inputs: feed_xh_bptt, target: feed_y_bptt})
-                        curr_te_err.append(_te_err)
-                        s_pred = np.transpose(feed_x_bptt * np.round((pred_y+1)*.5), (0,2,1))
-                        for k in range(bs):
-                            the_snr = SDR(librosa.istft(s_pred[k]), librosa.istft(feed_s_bptt[k]))[1]
-                            curr_te_snr.append(the_snr)
-                            #print ("k: {}, shat: {}, s: {}, snr: {}".format(k, s_pred[k].shape, feed_s_bptt[k].shape, the_snr))
-            mean_te_err = np.array(curr_te_err).mean()
-            mean_te_snr = np.array(curr_te_snr).mean()
-            tot_te_err.append(mean_te_err)
-            tot_te_snr.append(mean_te_snr)
-            pbar.update(1)
-            print ("Epoch {} Te_Err {} Te_SDR {}".format(e, mean_te_err, mean_te_snr))
+    for e in range(args.num_epochs):
+        curr_tr_err,curr_te_err,curr_te_snr = [],[],[]
+        # Train
+        for i in range(0, len(trXH), args.bs):
+        #for i in range(0, len(trXH)//10, args.bs):
+            feed_x_batch = np.array(trXH[i:i+args.bs])
+            feed_y_batch = np.array(trY[i:i+args.bs])
+            for j in range(0, feed_x_batch.shape[-1], args.bptt):
+                feed_x_bptt = np.transpose(feed_x_batch[:,:,j:j+args.bptt], (0,2,1))
+                feed_y_bptt = np.transpose(feed_y_batch[:,:,j:j+args.bptt], (0,2,1))
+                if feed_x_bptt.shape[1] >= args.bptt:
+                    _tr_err, _ = sess.run([tr_err, op], 
+                                          feed_dict={inputs: feed_x_bptt, target: feed_y_bptt})
+                    curr_tr_err.append(_tr_err)
+
+        mean_tr_err = np.array(curr_tr_err).mean()
+        tot_tr_err.append(mean_tr_err)
+        print ("Epoch {} Tr_Err {}".format(e, mean_tr_err))
+        #Test
+        for i in range(0, len(teXH), args.bs):
+            feed_x_batch = np.array(teX[i:i+args.bs])
+            feed_xh_batch = np.array(teXH[i:i+args.bs])
+            feed_y_batch = np.array(teY[i:i+args.bs])
+            feed_s_batch = np.array(teS[i:i+args.bs])
+            for j in range(0, feed_x_batch.shape[-1], args.bptt):
+                feed_x_bptt = np.transpose(feed_x_batch[:,:,j:j+args.bptt], (0,2,1))
+                feed_xh_bptt = np.transpose(feed_xh_batch[:,:,j:j+args.bptt], (0,2,1))
+                feed_y_bptt = np.transpose(feed_y_batch[:,:,j:j+args.bptt], (0,2,1))
+                feed_s_bptt = feed_s_batch[:,:,j:j+args.bptt]
+                if feed_x_bptt.shape[1] >= args.bptt:
+                    _te_err, pred_y, _ = sess.run([tr_err, trYh, op], 
+                                                  feed_dict={inputs: feed_xh_bptt, target: feed_y_bptt})
+                    curr_te_err.append(_te_err)
+                    s_pred = np.transpose(feed_x_bptt * np.round((pred_y+1)*.5), (0,2,1))
+                    for k in range(bs):
+                        the_snr = SDR(librosa.istft(s_pred[k]), librosa.istft(feed_s_bptt[k]))[1]
+                        curr_te_snr.append(the_snr)
+                        #print ("k: {}, shat: {}, s: {}, snr: {}".format(k, s_pred[k].shape, feed_s_bptt[k].shape, the_snr))
+        mean_te_err = np.array(curr_te_err).mean()
+        mean_te_snr = np.array(curr_te_snr).mean()
+        tot_te_err.append(mean_te_err)
+        tot_te_snr.append(mean_te_snr)
+        print ("Epoch {} Te_Err {} Te_SDR {}".format(e, mean_te_err, mean_te_snr))
         
     print('Saving as {}. Avg SNR: {:.4f}'.format(save_nm, np.array(tot_te_snr).mean()))
     print ("args.save_model: {}".format(args.save_model))
