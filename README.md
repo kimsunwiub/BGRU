@@ -6,6 +6,8 @@ This project was supported by Intel Corporation.
 
 Paper: Incremental Binarization On Recurrent Neural Networks For Single-Channel Source Sepration. Link: https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=8682595
 
+More updates/clean ups to be done, pleqse contact authors for immediate questions. 
+
 ### Repository structure
 
 #### training_stage_1.py
